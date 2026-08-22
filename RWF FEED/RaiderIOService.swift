@@ -100,4 +100,35 @@ extension WorldFirstTracker {
                 }
             }
     }
+
+    /// Flattens the same timeline buckets into one event per guild-kill, newest first —
+    /// a global kill feed across every guild instead of one row per guild's current standing.
+    ///
+    /// Assumes progress level N was boss N in encounter order (mythic progression in this
+    /// raid is gated, so guilds kill bosses in a fixed order) — the API only tells us a
+    /// guild reached progress N at time T, not which specific encounter that was.
+    func killFeedEvents(regionSlug: String = "world") -> [KillFeedEvent] {
+        guard let timeline = timelines.first(where: { $0.region.slug == regionSlug })?.timeline
+                ?? timelines.first?.timeline else {
+            return []
+        }
+        let orderedEncounters = raid.encounters.sorted { $0.ordinal < $1.ordinal }
+
+        var events: [KillFeedEvent] = []
+        for step in timeline {
+            guard step.progress >= 1, step.progress <= orderedEncounters.count else { continue }
+            let boss = orderedEncounters[step.progress - 1]
+
+            // The API's array order isn't guaranteed to be chronological, so rank by
+            // defeatedAt ourselves rather than trusting array position.
+            let kills = step.guilds
+                .compactMap { kill in kill.defeatedAt.map { (kill.guild, $0) } }
+                .sorted { $0.1 < $1.1 }
+
+            for (index, entry) in kills.enumerated() {
+                events.append(KillFeedEvent(guild: entry.0, boss: boss, rank: index + 1, defeatedAt: entry.1))
+            }
+        }
+        return events.sorted { $0.defeatedAt > $1.defeatedAt }
+    }
 }

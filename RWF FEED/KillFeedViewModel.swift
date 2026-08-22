@@ -1,5 +1,5 @@
 //
-//  FeedViewModel.swift
+//  KillFeedViewModel.swift
 //  RWF FEED
 //
 
@@ -7,8 +7,8 @@ import Foundation
 import Combine
 
 @MainActor
-final class FeedViewModel: ObservableObject {
-    @Published private(set) var posts: [FeedPost] = []
+final class KillFeedViewModel: ObservableObject {
+    @Published private(set) var events: [KillFeedEvent] = []
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
 
@@ -16,7 +16,6 @@ final class FeedViewModel: ObservableObject {
     private var pollTask: Task<Void, Never>?
 
     func startPolling(interval: TimeInterval = 30) {
-        NotificationManager.shared.requestAuthorizationIfNeeded()
         stopPolling()
         pollTask = Task { [weak self] in
             guard let self else { return }
@@ -33,13 +32,14 @@ final class FeedViewModel: ObservableObject {
     }
 
     func refresh() async {
-        if posts.isEmpty { isLoading = true }
+        if events.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
-            posts = try await service.fetchFeed()
+            let tracker = try await service.fetchTracker()
+            events = tracker.killFeedEvents()
             errorMessage = nil
         } catch {
-            errorMessage = "Couldn't load the feed. Pull to try again."
+            errorMessage = "Couldn't load the kill feed. Pull to try again."
         }
     }
 }

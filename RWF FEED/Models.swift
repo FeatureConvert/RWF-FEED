@@ -150,6 +150,9 @@ struct Encounter: Decodable, Identifiable {
     let iconUrl: String
 
     var id: Int { encounterId }
+
+    /// `iconUrl` comes back as a host-relative path (e.g. "/images/wow/icons/large/...jpg").
+    var fullIconURL: URL? { URL(string: "https://cdn.raiderio.net\(iconUrl)") }
 }
 
 // MARK: - Derived guild standing (one row per guild in the tracker)
@@ -161,4 +164,29 @@ struct GuildStanding: Identifiable {
     let isLive: Bool
 
     var id: Int { guild.id }
+}
+
+// MARK: - Derived kill-feed event (one row per boss kill, across every guild)
+
+struct KillFeedEvent: Identifiable {
+    let guild: RaceGuild
+    let boss: Encounter
+    /// 1 = world first, 2 = second guild to down it, etc. — this guild's placement among
+    /// every guild that killed this specific boss, by kill time.
+    let rank: Int
+    let defeatedAt: Date
+
+    var id: String { "\(guild.id)-\(boss.id)" }
+
+    var rankLabel: String {
+        if rank == 1 { return "World First" }
+        let tens = rank % 100
+        if (11...13).contains(tens) { return "\(rank)th" }
+        switch rank % 10 {
+        case 1: return "\(rank)st"
+        case 2: return "\(rank)nd"
+        case 3: return "\(rank)rd"
+        default: return "\(rank)th"
+        }
+    }
 }

@@ -1,0 +1,12 @@
+name = "rwf-feed-push"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+kv_namespaces = [
+  { binding = "PUSH_KV", id = "e8207fa029d447c1a5e574a43bffef07" }
+]
+
+# Cloudflare's minimum cron granularity is 1 minute — this is what gets us
+# "check within a minute" without needing to run our own always-on server.
+[triggers]
+crons = ["* * * * *"]

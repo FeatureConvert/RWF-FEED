@@ -15,6 +15,9 @@ struct ContentView: View {
 
             TrackerView()
                 .tabItem { Label("Tracker", systemImage: "list.number") }
+
+            KillFeedView()
+                .tabItem { Label("Kills", systemImage: "checkmark.seal.fill") }
         }
         .tint(Theme.accent)
     }

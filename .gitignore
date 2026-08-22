@@ -1,0 +1,3 @@
+*.p8
+push-service/.wrangler/
+push-service/node_modules/
