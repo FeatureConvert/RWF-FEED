@@ -58,12 +58,22 @@ struct FeedView: View {
 struct ScreenHeader: View {
     let title: String
     var isLoading: Bool = false
+    var lastUpdated: Date? = nil
 
     var body: some View {
-        HStack {
-            Text(title)
-                .font(Theme.screenTitle)
-                .foregroundStyle(Theme.textPrimary)
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Theme.screenTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                if let lastUpdated {
+                    TimelineView(.periodic(from: lastUpdated, by: 5)) { context in
+                        Text("Updated \(RelativeTime.short(from: lastUpdated, to: context.date))")
+                    }
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textSecondary)
+                }
+            }
             Spacer()
             if isLoading {
                 ProgressView()

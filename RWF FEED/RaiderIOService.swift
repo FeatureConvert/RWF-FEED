@@ -61,6 +61,22 @@ final class RaiderIOService {
         return decoded.worldFirstTracker
     }
 
+    /// The documented `/raiding/raid-rankings` endpoint (see raider.io/api) — unlike
+    /// fetchTracker's boss-count timeline, this carries each guild's live pull data (best %,
+    /// pull count) sourced from raider.io's own Desktop App combat-log tracking.
+    func fetchRaidRankings(region: String = "world", difficulty: String = "mythic") async throws -> [RaidRankingEntry] {
+        var components = URLComponents(string: "https://raider.io/api/v1/raiding/raid-rankings")!
+        components.queryItems = [
+            URLQueryItem(name: "raid", value: raidSlug),
+            URLQueryItem(name: "difficulty", value: difficulty),
+            URLQueryItem(name: "region", value: region),
+        ]
+        let (data, response) = try await session.data(from: components.url!)
+        try Self.validate(response)
+        let decoded = try decoder.decode(RaidRankingsResponse.self, from: data)
+        return decoded.raidRankings
+    }
+
     private static func validate(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
             throw RaiderIOError.badResponse
@@ -71,25 +87,43 @@ final class RaiderIOService {
 // MARK: - Deriving per-guild standings from the timeline buckets
 
 extension WorldFirstTracker {
-    /// Flattens the per-boss-level `timeline` buckets into one ranked row per guild.
-    func standings(regionSlug: String = "world") -> [GuildStanding] {
-        guard let timeline = timelines.first(where: { $0.region.slug == regionSlug })?.timeline
-                ?? timelines.first?.timeline else {
-            return []
-        }
+    private struct BestProgress {
+        let guild: RaceGuild
+        let progress: Int
+        let killedAt: Date?
+        let isLive: Bool
+    }
 
-        var best: [Int: (guild: RaceGuild, progress: Int, killedAt: Date?, isLive: Bool)] = [:]
+    private func timeline(regionSlug: String) -> [ProgressStep] {
+        timelines.first(where: { $0.region.slug == regionSlug })?.timeline
+            ?? timelines.first?.timeline
+            ?? []
+    }
 
+    /// One entry per guild: the highest progress they've reached, when they got there, and
+    /// whether they're currently streaming — shared by every view below that ranks guilds.
+    private func bestProgressPerGuild(_ timeline: [ProgressStep]) -> [Int: BestProgress] {
+        var best: [Int: BestProgress] = [:]
         for step in timeline {
             for kill in step.guilds {
                 let current = best[kill.guild.id]
                 if current == nil || step.progress > current!.progress {
-                    best[kill.guild.id] = (kill.guild, step.progress, kill.defeatedAt, kill.streamers.count > 0)
+                    best[kill.guild.id] = BestProgress(
+                        guild: kill.guild, progress: step.progress, killedAt: kill.defeatedAt,
+                        isLive: kill.streamers.count > 0
+                    )
                 }
             }
         }
+        return best
+    }
 
-        return best.values
+    /// Flattens the per-boss-level `timeline` buckets into one ranked row per guild.
+    func standings(regionSlug: String = "world") -> [GuildStanding] {
+        let steps = timeline(regionSlug: regionSlug)
+        guard !steps.isEmpty else { return [] }
+
+        return bestProgressPerGuild(steps).values
             .map { GuildStanding(guild: $0.guild, bossesDown: $0.progress, lastKillAt: $0.killedAt, isLive: $0.isLive) }
             .sorted { lhs, rhs in
                 if lhs.bossesDown != rhs.bossesDown { return lhs.bossesDown > rhs.bossesDown }
@@ -108,14 +142,12 @@ extension WorldFirstTracker {
     /// raid is gated, so guilds kill bosses in a fixed order) — the API only tells us a
     /// guild reached progress N at time T, not which specific encounter that was.
     func killFeedEvents(regionSlug: String = "world") -> [KillFeedEvent] {
-        guard let timeline = timelines.first(where: { $0.region.slug == regionSlug })?.timeline
-                ?? timelines.first?.timeline else {
-            return []
-        }
+        let steps = timeline(regionSlug: regionSlug)
+        guard !steps.isEmpty else { return [] }
         let orderedEncounters = raid.encounters.sorted { $0.ordinal < $1.ordinal }
 
         var events: [KillFeedEvent] = []
-        for step in timeline {
+        for step in steps {
             guard step.progress >= 1, step.progress <= orderedEncounters.count else { continue }
             let boss = orderedEncounters[step.progress - 1]
 
@@ -130,5 +162,40 @@ extension WorldFirstTracker {
             }
         }
         return events.sorted { $0.defeatedAt > $1.defeatedAt }
+    }
+
+}
+
+// MARK: - Deriving the per-boss summary list from official raid rankings
+
+extension RaidInfo {
+    /// One row per boss, in raid order: whichever guild claimed World First (the earliest
+    /// kill across every tracked guild), and — for bosses nobody's killed yet — whichever
+    /// guild currently has the best (lowest remaining health%) live pull. Pull data comes
+    /// from raider.io's own Desktop App combat-log tracking, not WarcraftLogs, so it updates
+    /// in near real time during the race.
+    func bossSummaries(rankings: [RaidRankingEntry]) -> [BossSummary] {
+        var worldFirstBySlug: [String: BossSummary.WorldFirst] = [:]
+        var bestPullBySlug: [String: BossSummary.BestPull] = [:]
+
+        for entry in rankings {
+            for defeat in entry.encountersDefeated {
+                let current = worldFirstBySlug[defeat.slug]
+                if current == nil || defeat.firstDefeated < current!.at {
+                    worldFirstBySlug[defeat.slug] = BossSummary.WorldFirst(guild: entry.guild, at: defeat.firstDefeated)
+                }
+            }
+            for pull in entry.encountersPulled where !pull.isDefeated {
+                guard let percent = pull.bestPercent, let pullCount = pull.numPulls else { continue }
+                let current = bestPullBySlug[pull.slug]
+                if current == nil || percent < current!.percent {
+                    bestPullBySlug[pull.slug] = BossSummary.BestPull(guild: entry.guild, percent: percent, pullCount: pullCount)
+                }
+            }
+        }
+
+        return encounters
+            .sorted { $0.ordinal < $1.ordinal }
+            .map { boss in BossSummary(boss: boss, worldFirst: worldFirstBySlug[boss.slug], bestPull: bestPullBySlug[boss.slug]) }
     }
 }

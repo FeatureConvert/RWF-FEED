@@ -18,6 +18,9 @@ struct ContentView: View {
 
             KillFeedView()
                 .tabItem { Label("Kills", systemImage: "checkmark.seal.fill") }
+
+            BossBreakdownView()
+                .tabItem { Label("Bosses", systemImage: "chart.bar.fill") }
         }
         .tint(Theme.accent)
     }

@@ -146,6 +146,7 @@ struct RaidInfo: Decodable {
 struct Encounter: Decodable, Identifiable {
     let encounterId: Int
     let name: String
+    let slug: String
     let ordinal: Int
     let iconUrl: String
 
@@ -189,4 +190,51 @@ struct KillFeedEvent: Identifiable {
         default: return "\(rank)th"
         }
     }
+}
+
+// MARK: - Official raid rankings (raider.io's own live pull tracking, from the Desktop App)
+
+struct RaidRankingsResponse: Decodable {
+    let raidRankings: [RaidRankingEntry]
+}
+
+struct RaidRankingEntry: Decodable {
+    let guild: RaceGuild
+    let encountersDefeated: [EncounterDefeatEntry]
+    let encountersPulled: [EncounterPullEntry]
+}
+
+struct EncounterDefeatEntry: Decodable {
+    let slug: String
+    let firstDefeated: Date
+}
+
+struct EncounterPullEntry: Decodable {
+    let slug: String
+    /// Absent for some already-defeated encounters rather than 0 — genuinely unknown, not zero.
+    let numPulls: Int?
+    /// 0–100 scale (e.g. 63.01), unlike some of raider.io's other endpoints which use a 0–1
+    /// fraction. Absent alongside numPulls in the same cases.
+    let bestPercent: Double?
+    let isDefeated: Bool
+}
+
+// MARK: - Derived per-boss summary (one row per boss, in raid order)
+
+struct BossSummary: Identifiable {
+    struct WorldFirst {
+        let guild: RaceGuild
+        let at: Date
+    }
+    struct BestPull {
+        let guild: RaceGuild
+        let percent: Double
+        let pullCount: Int
+    }
+
+    let boss: Encounter
+    let worldFirst: WorldFirst?
+    let bestPull: BestPull?
+
+    var id: Int { boss.id }
 }
