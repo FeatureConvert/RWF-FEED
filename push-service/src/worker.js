@@ -89,7 +89,7 @@ async function checkForNewPosts(env) {
   if (newPosts.length > 0) {
     const tokens = await getTokens(env);
     for (const post of newPosts) {
-      const title = post.author || "Global Coverage";
+      const title = "Venomous Abyss";
       const body = post.contentPreview || "New update";
       for (const token of tokens) {
         await sendPush(env, token, title, body, `post-${post.id}`);
