@@ -1,0 +1,153 @@
+//
+//  FeedView.swift
+//  RWF FEED
+//
+
+import SwiftUI
+
+struct FeedView: View {
+    @StateObject private var viewModel = FeedViewModel()
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading)
+
+                Group {
+                    if viewModel.posts.isEmpty && viewModel.isLoading {
+                        ProgressView("Loading feed…")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if viewModel.posts.isEmpty, let message = viewModel.errorMessage {
+                        ContentUnavailableView(message, systemImage: "wifi.slash")
+                    } else {
+                        // A plain ScrollView instead of List: rows contain WKWebView embeds
+                        // that resize themselves asynchronously once their content loads,
+                        // and List's UICollectionView-backed layout can't tolerate a cell
+                        // changing height mid-layout-pass — it aborts with an internal
+                        // consistency assertion. A ScrollView/LazyVStack has no such
+                        // constraint.
+                        ScrollView {
+                            LazyVStack(spacing: Theme.cardGap) {
+                                ForEach(viewModel.posts) { post in
+                                    FeedPostRow(post: post)
+                                }
+                            }
+                            .padding(.horizontal, Theme.screenEdgeMargin)
+                            .padding(.vertical, Theme.cardGap / 2)
+                        }
+                        .scrollContentBackground(.hidden)
+                        .refreshable { await viewModel.refresh() }
+                    }
+                }
+            }
+            .background(Theme.background)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+        .tint(Theme.accent)
+        .task {
+            viewModel.startPolling()
+        }
+        .onDisappear {
+            viewModel.stopPolling()
+        }
+    }
+}
+
+/// Fixed title bar matching the spec's "Screen / nav title" role — left-aligned, 20pt
+/// medium, sitting above the scroll content rather than in system nav-bar chrome.
+struct ScreenHeader: View {
+    let title: String
+    var isLoading: Bool = false
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(Theme.screenTitle)
+                .foregroundStyle(Theme.textPrimary)
+            Spacer()
+            if isLoading {
+                ProgressView()
+            }
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, Theme.screenEdgeMargin)
+        .padding(.bottom, 14)
+    }
+}
+
+struct FeedPostRow: View {
+    let post: FeedPost
+
+    private var blocks: [PostContentBlock] { PostContent.parseBlocks(from: post.content ?? "") }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.cardRowGap) {
+            HStack(spacing: 6) {
+                Text(post.author ?? "Raider.IO")
+                    .font(Theme.authorName)
+                    .foregroundStyle(Theme.textPrimary)
+                if post.isPriority {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.star)
+                }
+                Spacer()
+                Text(RelativeTime.short(from: post.publishedAt))
+                    .font(Theme.timestamp)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .text(let attributed):
+                    Text(attributed)
+                        .foregroundStyle(Theme.textPrimary)
+                        .tint(Theme.accentText)
+                case .image(let url):
+                    PostImageView(url: url)
+                case .embed(let info):
+                    EmbedBlockView(info: info)
+                }
+            }
+
+            if !post.tags.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(post.tags) { tag in
+                        Text(tag.name)
+                            .font(Theme.tagLabel)
+                            .tracking(Theme.tagLabelTracking)
+                            .foregroundStyle(Theme.tagText)
+                            .padding(.horizontal, Theme.tagHPadding)
+                            .padding(.vertical, Theme.tagVPadding)
+                            .background(Theme.tagFill, in: RoundedRectangle(cornerRadius: Theme.tagCornerRadius, style: .continuous))
+                    }
+                }
+            }
+        }
+        .padding(Theme.cardPadding)
+        .background(Theme.cardSurface, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
+    }
+}
+
+struct PostImageView: View {
+    let url: URL
+
+    var body: some View {
+        AsyncImage(url: url) { phase in
+            if let image = phase.image {
+                image.resizable().aspectRatio(contentMode: .fit)
+            } else if phase.error != nil {
+                EmptyView()
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 80)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+#Preview {
+    FeedView()
+}
