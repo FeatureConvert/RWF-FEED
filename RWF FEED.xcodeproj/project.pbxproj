@@ -6,19 +6,77 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2E5BB0767CBEDA47DCA898D8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4AC416F02B6E09B87A86311 /* Foundation.framework */; };
+		36A3B8B2E755F9AF558D55C4 /* RWFFeedWidgetEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */; };
+		68726202318061076861F974 /* RWFFeedWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		70DB6DC2CBBD55BADFA1DEEF /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9927B1D126D5067B693EEF6B /* WidgetData.swift */; };
+		7AEABBA187B68C0EC169406E /* RWFFeedWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F74ED266B4954D24630CCB /* RWFFeedWidgetBundle.swift */; };
+		B6937C793597B7208A49F70E /* RWFTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B016037217970D48E9B20492 /* RWFTimelineProvider.swift */; };
+		CB49995C3F15B23B6B0EDA59 /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */; };
+		F0D3DBD114DD26924E23CD27 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE7EB343A39132B73AE3F15 /* WidgetKit.framework */; };
+		FBE91DEBA81F75ACA7FA7F63 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F57A7D0CB23310DDBBFA27 /* SwiftUI.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		8C11720819C525648319F0FA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9DF911E9303A41EC001688F0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 050F2008C9B004F11BCEFB2D;
+			remoteInfo = RWFFeedWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EC447B192813BA6F2ADC66B5 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				68726202318061076861F974 /* RWFFeedWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetTheme.swift; sourceTree = "<group>"; };
+		31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWidgetEntryView.swift; sourceTree = "<group>"; };
+		36F74ED266B4954D24630CCB /* RWFFeedWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWidgetBundle.swift; sourceTree = "<group>"; };
+		37F57A7D0CB23310DDBBFA27 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
+		3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RWFFeedWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		41F8DFD60407DF3638828304 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7DE7EB343A39132B73AE3F15 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
+		9927B1D126D5067B693EEF6B /* WidgetData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
 		9DF911F1303A41EC001688F0 /* RWF FEED.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RWF FEED.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4AC416F02B6E09B87A86311 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		B016037217970D48E9B20492 /* RWFTimelineProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFTimelineProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9DF911F3303A41EC001688F0 /* RWF FEED */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = "RWF FEED";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		811F45939A0504E8379ED1FC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2E5BB0767CBEDA47DCA898D8 /* Foundation.framework in Frameworks */,
+				F0D3DBD114DD26924E23CD27 /* WidgetKit.framework in Frameworks */,
+				FBE91DEBA81F75ACA7FA7F63 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9DF911EE303A41EC001688F0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -29,11 +87,37 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		57C5B43504D21F8412CDE693 /* RWFFeedWidget */ = {
+			isa = PBXGroup;
+			children = (
+				36F74ED266B4954D24630CCB /* RWFFeedWidgetBundle.swift */,
+				31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */,
+				B016037217970D48E9B20492 /* RWFTimelineProvider.swift */,
+				9927B1D126D5067B693EEF6B /* WidgetData.swift */,
+				2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */,
+				41F8DFD60407DF3638828304 /* Info.plist */,
+			);
+			name = RWFFeedWidget;
+			path = RWFFeedWidget;
+			sourceTree = "<group>";
+		};
+		7A37F25DE81E090610765464 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				A4AC416F02B6E09B87A86311 /* Foundation.framework */,
+				7DE7EB343A39132B73AE3F15 /* WidgetKit.framework */,
+				37F57A7D0CB23310DDBBFA27 /* SwiftUI.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		9DF911E8303A41EC001688F0 = {
 			isa = PBXGroup;
 			children = (
 				9DF911F3303A41EC001688F0 /* RWF FEED */,
 				9DF911F2303A41EC001688F0 /* Products */,
+				E69BA7F9C091E6EB4880B25E /* Frameworks */,
+				57C5B43504D21F8412CDE693 /* RWFFeedWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -41,13 +125,39 @@
 			isa = PBXGroup;
 			children = (
 				9DF911F1303A41EC001688F0 /* RWF FEED.app */,
+				3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E69BA7F9C091E6EB4880B25E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7A37F25DE81E090610765464 /* iOS */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		050F2008C9B004F11BCEFB2D /* RWFFeedWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 11101C18F3DBE09E907322B6 /* Build configuration list for PBXNativeTarget "RWFFeedWidget" */;
+			buildPhases = (
+				D278123A99B237FD6755670A /* Sources */,
+				811F45939A0504E8379ED1FC /* Frameworks */,
+				6EABC4FE6A592AAF762A321B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RWFFeedWidget;
+			productName = RWFFeedWidget;
+			productReference = 3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		9DF911F0303A41EC001688F0 /* RWF FEED */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9DF911FC303A41ED001688F0 /* Build configuration list for PBXNativeTarget "RWF FEED" */;
@@ -55,17 +165,17 @@
 				9DF911ED303A41EC001688F0 /* Sources */,
 				9DF911EE303A41EC001688F0 /* Frameworks */,
 				9DF911EF303A41EC001688F0 /* Resources */,
+				EC447B192813BA6F2ADC66B5 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				EE36DEABE2E2C5322952A7CC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9DF911F3303A41EC001688F0 /* RWF FEED */,
 			);
 			name = "RWF FEED";
-			packageProductDependencies = (
-			);
 			productName = "RWF FEED";
 			productReference = 9DF911F1303A41EC001688F0 /* RWF FEED.app */;
 			productType = "com.apple.product-type.application";
@@ -80,6 +190,10 @@
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+					050F2008C9B004F11BCEFB2D = {
+						CreatedOnToolsVersion = 26.6;
+						ProvisioningStyle = Automatic;
+					};
 					9DF911F0303A41EC001688F0 = {
 						CreatedOnToolsVersion = 26.6;
 					};
@@ -100,11 +214,19 @@
 			projectRoot = "";
 			targets = (
 				9DF911F0303A41EC001688F0 /* RWF FEED */,
+				050F2008C9B004F11BCEFB2D /* RWFFeedWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		6EABC4FE6A592AAF762A321B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9DF911EF303A41EC001688F0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -122,9 +244,91 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D278123A99B237FD6755670A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AEABBA187B68C0EC169406E /* RWFFeedWidgetBundle.swift in Sources */,
+				36A3B8B2E755F9AF558D55C4 /* RWFFeedWidgetEntryView.swift in Sources */,
+				B6937C793597B7208A49F70E /* RWFTimelineProvider.swift in Sources */,
+				70DB6DC2CBBD55BADFA1DEEF /* WidgetData.swift in Sources */,
+				CB49995C3F15B23B6B0EDA59 /* WidgetTheme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		EE36DEABE2E2C5322952A7CC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RWFFeedWidget;
+			target = 050F2008C9B004F11BCEFB2D /* RWFFeedWidget */;
+			targetProxy = 8C11720819C525648319F0FA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		40FFE71A60D52F09DAF2526F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5X98G8X3FJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RWFFeedWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "RIO.RWF-FEED.RWFFeedWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7944D9FDFEC9C23C3747A706 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5X98G8X3FJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RWFFeedWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "RIO.RWF-FEED.RWFFeedWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		9DF911FA303A41ED001688F0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -315,6 +519,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		11101C18F3DBE09E907322B6 /* Build configuration list for PBXNativeTarget "RWFFeedWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7944D9FDFEC9C23C3747A706 /* Release */,
+				40FFE71A60D52F09DAF2526F /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		9DF911EC303A41EC001688F0 /* Build configuration list for PBXProject "RWF FEED" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
