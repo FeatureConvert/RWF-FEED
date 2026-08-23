@@ -8,27 +8,39 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var selectedTab: AppTab = .feed
+    /// Each tab's view (and its @StateObject view model / polling task) is created the first
+    /// time it's selected, then kept alive and just visually swapped after that — matching how
+    /// a real TabView behaves, rather than eagerly starting all 6 tabs' polling at launch.
+    @State private var visitedTabs: Set<AppTab> = [.feed]
+
     var body: some View {
-        TabView {
-            FeedView()
-                .tabItem { Label("Feed", systemImage: "bolt.fill") }
+        VStack(spacing: 0) {
+            ZStack {
+                if visitedTabs.contains(.feed) { tab(.feed) { FeedView() } }
+                if visitedTabs.contains(.tracker) { tab(.tracker) { TrackerView() } }
+                if visitedTabs.contains(.kills) { tab(.kills) { KillFeedView() } }
+                if visitedTabs.contains(.bosses) { tab(.bosses) { BossBreakdownView() } }
+                if visitedTabs.contains(.heartbreak) { tab(.heartbreak) { HeartbreakView() } }
+                if visitedTabs.contains(.news) { tab(.news) { NewsView() } }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            TrackerView()
-                .tabItem { Label("Tracker", systemImage: "list.number") }
-
-            KillFeedView()
-                .tabItem { Label("Kills", systemImage: "checkmark.seal.fill") }
-
-            BossBreakdownView()
-                .tabItem { Label("Bosses", systemImage: "chart.bar.fill") }
-
-            HeartbreakView()
-                .tabItem { Label("Heartbreak", systemImage: "heart.slash.fill") }
-
-            NewsView()
-                .tabItem { Label("News", systemImage: "newspaper.fill") }
+            CustomTabBar(selection: $selectedTab)
         }
-        .tint(Theme.accent)
+        .ignoresSafeArea(.keyboard)
+        .background(Theme.background)
+        .onChange(of: selectedTab) { _, newValue in
+            visitedTabs.insert(newValue)
+        }
+    }
+
+    @ViewBuilder
+    private func tab<Content: View>(_ value: AppTab, @ViewBuilder content: () -> Content) -> some View {
+        content()
+            .opacity(selectedTab == value ? 1 : 0)
+            .allowsHitTesting(selectedTab == value)
+            .accessibilityHidden(selectedTab != value)
     }
 }
 
