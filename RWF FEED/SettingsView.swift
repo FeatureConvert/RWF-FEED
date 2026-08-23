@@ -51,6 +51,16 @@ struct SettingsView: View {
                     Text("Did You Know?")
                         .foregroundStyle(Theme.textSecondary)
                 }
+
+                Section {
+                    Link(destination: URL(string: "https://raider.io")!) {
+                        Text("Data provided by Raider.IO")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowBackground(Color.clear)
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
