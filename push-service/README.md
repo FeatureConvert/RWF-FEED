@@ -2,9 +2,10 @@
 
 A Cloudflare Worker that gets RWF FEED new-post and WoW-news notifications delivered even
 while the app is fully closed. Local notifications (the app's own polling loop) only fire
-while the app is running — this Worker polls raider.io and Wowhead independently, on its
-own 1-minute cron (Cloudflare's minimum cron granularity), and pushes via APNs the moment
-something new shows up.
+while the app is running — this Worker polls raider.io and Wowhead independently and pushes
+via APNs the moment something new shows up. Raid coverage/pulls run on a 1-minute cron
+(Cloudflare's minimum granularity); Wowhead news runs on its own 15-minute cron, since news
+posts far less often and doesn't need the same freshness.
 
 Deployed at: `https://rwf-feed-push.rwf-feed.workers.dev`
 
@@ -19,29 +20,35 @@ delivered it while the app is closed). There's no per-guild filtering within
 enough to be worth the complexity) — it's an all-or-nothing category, same as
 `wowheadEnabled`.
 
-- **Cron** (`* * * * *`, every minute): runs all three checks below.
+- **Cron** (`* * * * *`, every minute): runs `checkForNewPosts` and `checkRaiderIOEvents`
+  below. A second cron (`*/15 * * * *`) runs `checkWowheadNews` on its own slower cadence;
+  `scheduled()` routes on `event.cron` since both triggers fire the handler and the
+  15-minute one also matches every 1-minute tick.
 - **`checkForNewPosts`**: fetches the coverage feed, diffs against `lastSeenPostId` in
-  KV, and pushes anything newer to every `raiderioEnabled` device. Coverage posts
+  D1, and pushes anything newer to every `raiderioEnabled` device. Coverage posts
   routinely announce kills in the first sentence, so `spoilerFreeEnabled` devices get a
   generic body here too, not just on `checkWorldFirstKills` pushes.
 - **`checkRaiderIOEvents`**: fetches raid-race (boss names) and raid-rankings (live
   pull/defeat data) once, then runs both of the following against that shared data —
   they'd otherwise each need the same two fetches every minute:
   - **`checkHeartbreaks`**: "Major Heartbreaker" pushes — a guild pulling a boss down to
-    a new-record-low remaining health%. Record-tracking (`heartbreakBest` in KV, per
+    a new-record-low remaining health%. Record-tracking (`heartbreakBest` in D1, per
     guild+boss) is threshold-agnostic by design — each device then applies its own
     `heartbreakThresholdPercent` (default `HEARTBREAK_DEFAULT_THRESHOLD_PERCENT`, 5.01%)
     and `notifyNonWorldFirstHeartbreaks` (default off — only reach devices that opted in
     for a close call on a boss another guild already claimed) independently at push
     time, since two devices can disagree on both.
   - **`checkWorldFirstKills`**: "World First!" pushes — the first guild to defeat each
-    boss, tracked in `worldFirstKillsSeen` in KV so each boss only pushes once. For
+    boss, tracked in `worldFirstKillsSeen` in D1 so each boss only pushes once. For
     `spoilerFreeEnabled` devices, the guild/boss are redacted to a generic "Spoiler
     Alert" body instead of naming them.
   - Both only reach `raiderioEnabled` devices.
+  - All three of the above only write to D1 when the tracked value actually changes
+    (a real new post, a genuine new heartbreak record, a new World First claim) — not
+    unconditionally on every cron tick.
 - **`checkWowheadNews`**: fetches Wowhead's public WoW-retail-only RSS feed
   (`wowhead.com/news/rss/retail` — excludes Diablo/other-game articles), diffs by
-  `pubDate` against `wowheadLastSeenPubDate` in KV, and pushes new articles ("WoW News" /
+  `pubDate` against `wowheadLastSeenPubDate` in D1, and pushes new articles ("WoW News" /
   article title) to every `wowheadEnabled` device.
 - **`POST /register`**: the app calls this after `registerForRemoteNotifications()`
   succeeds, and again whenever a Settings toggle/slider changes, with
@@ -53,9 +60,7 @@ enough to be worth the complexity) — it's an all-or-nothing category, same as
   `{ posts, raiderioEvents, wowheadNews }`.
 - **`GET /test-push`**: sends a fixed test notification directly to every
   registered device (ignoring all preference flags), bypassing all diffs entirely.
-  Useful for confirming delivery without needing a real new post/close-call/kill/article,
-  or fighting KV's eventual consistency (writes can take up to ~60s to become visible to
-  the Worker's own reads).
+  Useful for confirming delivery without needing a real new post/close-call/kill/article.
 
 ```bash
 curl -H "X-Admin-Secret: <value>" "https://rwf-feed-push.rwf-feed.workers.dev/check"
@@ -105,30 +110,36 @@ after use. If you need it again, generate a new one at
 lose it, generate a new random value and `wrangler secret put ADMIN_SECRET` again; the
 old one stops working immediately.
 
-## KV namespace
+## D1 database
 
-Binding `PUSH_KV`, id `e8207fa029d447c1a5e574a43bffef07` (see `wrangler.toml`). Holds:
+Binding `DB`, database `rwf-feed-push-db` (id `41de81ab-430f-4cd0-8ef9-41235ee7a2cd`, see
+`wrangler.toml`; schema in `schema.sql`). This replaced a Workers KV namespace
+(`PUSH_KV`, id `e8207fa029d447c1a5e574a43bffef07`, still exists but no longer bound to the
+Worker) — KV's free tier caps out at 1,000 write ops/day, and this cron's own unconditional
+writes on every tick were repeatedly exceeding it (see git history around 2026-08-23 for
+the incident and the conditional-write fix that shipped first). D1's free tier is 100,000
+writes/day, ~100x the headroom, for $0/month.
 
-- `lastSeenPostId` — integer, the highest feed post ID seen so far.
-- `heartbreakBest` — JSON object, `{ "guildId-bossSlug": lowestPercentSeen }` — the record
-  close call already pushed for each guild+boss pair, so only a new record re-pushes.
-- `wowheadLastSeenPubDate` — ISO date string, the newest Wowhead article `pubDate` seen so
-  far.
-- `devices` — JSON array of `{ token, raiderioEnabled, wowheadEnabled,
-  spoilerFreeEnabled, heartbreakThresholdPercent, notifyNonWorldFirstHeartbreaks }`.
-  Also accepts (read-only) older shapes from before some of these existed — a plain
-  token string, or an object missing some fields — `normalizeDevice`/`getDevices`
-  default missing fields the same way `addDevice` does (raiderioEnabled/wowheadEnabled
-  → `true`, everything else → off/standard threshold).
-- `deviceTokens` — the original key name, from before `devices` existed. Only read as a
-  last-resort fallback if `devices` doesn't exist yet; never written to anymore.
+Two tables:
+
+- **`devices`** — one row per device: `token` (primary key), `raiderio_enabled`,
+  `wowhead_enabled`, `spoiler_free_enabled`, `heartbreak_threshold_percent`,
+  `notify_non_world_first_heartbreaks`. Upserted atomically via
+  `INSERT ... ON CONFLICT(token) DO UPDATE`.
+- **`cron_state`** — generic `key`/`value` table for the cron's own tracking state:
+  - `lastSeenPostId` — the highest feed post ID seen so far, as a string.
+  - `heartbreakBest` — JSON object, `{ "guildId-bossSlug": lowestPercentSeen }` — the
+    record close call already pushed for each guild+boss pair, so only a new record
+    re-pushes.
+  - `worldFirstKillsSeen` — JSON object, `{ bossSlug: true }` — which bosses already had
+    a World First push.
+  - `wowheadLastSeenPubDate` — ISO date string, the newest Wowhead article `pubDate` seen
+    so far.
 
 ```bash
 # Inspect current state
-npx wrangler kv key get "lastSeenPostId" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
-npx wrangler kv key get "devices" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
-npx wrangler kv key get "heartbreakBest" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
-npx wrangler kv key get "wowheadLastSeenPubDate" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
+npx wrangler d1 execute rwf-feed-push-db --remote --command="SELECT * FROM devices"
+npx wrangler d1 execute rwf-feed-push-db --remote --command="SELECT * FROM cron_state"
 ```
 
 ## Account

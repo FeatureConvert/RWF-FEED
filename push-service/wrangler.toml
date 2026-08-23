@@ -2,11 +2,16 @@ name = "rwf-feed-push"
 main = "src/worker.js"
 compatibility_date = "2024-11-01"
 
-kv_namespaces = [
-  { binding = "PUSH_KV", id = "e8207fa029d447c1a5e574a43bffef07" }
-]
+# PUSH_KV (id e8207fa029d447c1a5e574a43bffef07) previously held all this state — migrated to
+# D1 (see below) because KV's free tier caps out at 1,000 writes/day, which this cron's every-
+# minute polling repeatedly exceeded. Not deleted, just unbound, in case old data is ever needed.
+[[d1_databases]]
+binding = "DB"
+database_name = "rwf-feed-push-db"
+database_id = "41de81ab-430f-4cd0-8ef9-41235ee7a2cd"
 
-# Cloudflare's minimum cron granularity is 1 minute — this is what gets us
-# "check within a minute" without needing to run our own always-on server.
+# Raid coverage/pulls need the 1-minute granularity, but Wowhead news posts far less often —
+# it runs on its own 15-minute schedule instead so it's not fetching (and burning Worker
+# invocations) 1,440 times a day for something that changes a handful of times.
 [triggers]
-crons = ["* * * * *"]
+crons = ["* * * * *", "*/15 * * * *"]

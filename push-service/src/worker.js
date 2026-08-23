@@ -35,8 +35,6 @@
 const FEED_SLUG = "the-venomous-abyss-global-coverage";
 const RAID_SLUG = "the-venomous-abyss";
 const LAST_SEEN_KEY = "lastSeenPostId";
-const DEVICES_KEY = "devices";
-const LEGACY_TOKENS_KEY = "deviceTokens";
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
 // Matches NotificationPreferences.defaultHeartbreakThresholdPercent on the client — kept as a
 // clean 5.0 so it lands on the Settings slider's 0.5-step grid rather than snapping on first touch.
@@ -54,8 +52,16 @@ const DEVICE_TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
 const MAX_DEVICES = 200;
 
 export default {
-  async scheduled(_event, env, ctx) {
-    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkRaiderIOEvents(env), checkWowheadNews(env)]));
+  // Two independent cron triggers fire this (see wrangler.toml): "*/15 * * * *" also matches
+  // every "* * * * *" tick, so Cloudflare invokes scheduled() once per matching expression —
+  // routing on event.cron keeps the Wowhead check from also running (and double-fetching) on
+  // the every-minute trigger.
+  async scheduled(event, env, ctx) {
+    if (event.cron === "*/15 * * * *") {
+      ctx.waitUntil(checkWowheadNews(env));
+      return;
+    }
+    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkRaiderIOEvents(env)]));
   },
 
   async fetch(request, env) {
@@ -132,18 +138,18 @@ async function checkForNewPosts(env) {
     return { ok: true, newPosts: 0 };
   }
 
-  // KV reads can be up to ~60s stale across colos, and this cron overlapping a manual
-  // /check hitting a different colo could both read the same lastSeenRaw and both push the
-  // same "new" post — apns-collapse-id means the device sees one alert, not two, so this is
-  // a latent double-send rather than a user-visible bug. Same tradeoff as the device-storage
-  // races documented near addDevice: not worth a Durable Object for this app's scale.
+  // This cron overlapping a manual /check could both read the same lastSeenRaw before either
+  // writes back and both push the same "new" post — apns-collapse-id means the device sees one
+  // alert, not two, so this is a latent double-send rather than a user-visible bug. Same
+  // tradeoff as the device-storage races documented near addDevice: not worth a transaction
+  // for this app's scale.
   const maxId = posts.reduce((m, p) => Math.max(m, p.id), 0);
-  const lastSeenRaw = await env.PUSH_KV.get(LAST_SEEN_KEY);
+  const lastSeenRaw = await getCronState(env, LAST_SEEN_KEY);
 
   if (lastSeenRaw === null) {
     // First run ever: just record the baseline so we don't blast a notification for
     // every post already in the feed's backlog.
-    await env.PUSH_KV.put(LAST_SEEN_KEY, String(maxId));
+    await setCronState(env, LAST_SEEN_KEY, String(maxId));
     return { ok: true, newPosts: 0, baseline: maxId };
   }
 
@@ -165,9 +171,13 @@ async function checkForNewPosts(env) {
         await sendPush(env, device.token, title, device.spoilerFreeEnabled ? spoilerFreeBody : body, `post-${post.id}`);
       }
     }
+    // Only write when maxId actually advanced — this cron runs every minute, and writing
+    // unconditionally on a KV-backed version of this (before the D1 migration below) burned
+    // ~1440 writes/day from this function alone toward KV's 1000/day free-tier cap, even on
+    // minutes with nothing new. D1's free tier is 100k writes/day, but there's no reason to
+    // reintroduce the churn.
+    await setCronState(env, LAST_SEEN_KEY, String(maxId));
   }
-
-  await env.PUSH_KV.put(LAST_SEEN_KEY, String(maxId));
   return { ok: true, newPosts: newPosts.length };
 }
 
@@ -220,10 +230,11 @@ async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
     for (const defeat of entry.encountersDefeated || []) claimedSlugs.add(defeat.slug);
   }
 
-  const bestRaw = await env.PUSH_KV.get(HEARTBREAK_BEST_KEY);
+  const bestRaw = await getCronState(env, HEARTBREAK_BEST_KEY);
   const isFirstRun = bestRaw === null;
   const best = isFirstRun ? {} : JSON.parse(bestRaw);
   const nextBest = { ...best };
+  let changed = false;
 
   let pushCount = 0;
   for (const entry of rankings) {
@@ -234,7 +245,10 @@ async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
       const key = `${entry.guild.id}-${pull.slug}`;
       const previousBest = best[key];
       const isNewRecord = previousBest === undefined || pull.bestPercent < previousBest;
-      if (isNewRecord) nextBest[key] = pull.bestPercent;
+      if (isNewRecord) {
+        nextBest[key] = pull.bestPercent;
+        changed = true;
+      }
       // First run ever: record the baseline (so re-notifying doesn't depend on someone
       // happening to improve past a pull we never saw) without pushing for every close call
       // already in progress the moment this ships. Record-tracking itself isn't gated by any
@@ -264,7 +278,9 @@ async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
     }
   }
 
-  await env.PUSH_KV.put(HEARTBREAK_BEST_KEY, JSON.stringify(nextBest));
+  // This cron runs every minute; only write when a pull actually set a new record, not on
+  // every tick — see the LAST_SEEN_KEY comment above for why that matters.
+  if (changed) await setCronState(env, HEARTBREAK_BEST_KEY, JSON.stringify(nextBest));
   return { pushCount };
 }
 
@@ -283,15 +299,17 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
     }
   }
 
-  const seenRaw = await env.PUSH_KV.get(WORLD_FIRST_SEEN_KEY);
+  const seenRaw = await getCronState(env, WORLD_FIRST_SEEN_KEY);
   const isFirstRun = seenRaw === null;
   const seen = isFirstRun ? {} : JSON.parse(seenRaw);
   const nextSeen = { ...seen };
+  let changed = false;
 
   let pushCount = 0;
   for (const [slug, claim] of claimedNow) {
     if (seen[slug]) continue;
     nextSeen[slug] = true;
+    changed = true;
     // First run ever: record the baseline (bosses already killed before this shipped)
     // without pushing for every one of them at once.
     if (isFirstRun) continue;
@@ -308,7 +326,8 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
     }
   }
 
-  await env.PUSH_KV.put(WORLD_FIRST_SEEN_KEY, JSON.stringify(nextSeen));
+  // Same reasoning as HEARTBREAK_BEST_KEY above — only write when a boss was newly claimed.
+  if (changed) await setCronState(env, WORLD_FIRST_SEEN_KEY, JSON.stringify(nextSeen));
   return { pushCount };
 }
 
@@ -339,11 +358,11 @@ async function checkWowheadNews(env) {
   items.sort((a, b) => b.pubDate - a.pubDate);
   const newest = items[0];
 
-  const lastSeenRaw = await env.PUSH_KV.get(WOWHEAD_LAST_SEEN_KEY);
+  const lastSeenRaw = await getCronState(env, WOWHEAD_LAST_SEEN_KEY);
   if (lastSeenRaw === null) {
     // First run ever: record the baseline so we don't blast a notification for every
     // article already sitting in the feed's backlog.
-    await env.PUSH_KV.put(WOWHEAD_LAST_SEEN_KEY, newest.pubDate.toISOString());
+    await setCronState(env, WOWHEAD_LAST_SEEN_KEY, newest.pubDate.toISOString());
     return { ok: true, newArticles: 0, baseline: newest.guid };
   }
 
@@ -358,9 +377,9 @@ async function checkWowheadNews(env) {
         await sendPush(env, device.token, "WoW News", article.title, collapseId);
       }
     }
+    // Same reasoning as LAST_SEEN_KEY above — only write when the newest pubDate advanced.
+    await setCronState(env, WOWHEAD_LAST_SEEN_KEY, newest.pubDate.toISOString());
   }
-
-  await env.PUSH_KV.put(WOWHEAD_LAST_SEEN_KEY, newest.pubDate.toISOString());
   return { ok: true, newArticles: newArticles.length };
 }
 
@@ -404,7 +423,7 @@ async function getApnsJwt(env) {
 
 // Never throws — a rejected fetch (network error reaching APNs, not just a non-2xx
 // response) used to propagate straight out of the caller's loop, skipping the
-// lastSeenPostId/heartbreakBest KV write that follows it and causing every "new" item to be
+// lastSeenPostId/heartbreakBest state write that follows it and causing every "new" item to be
 // re-sent to every device on the next cron tick. Callers get an {status, error} result for
 // both failure modes instead, same as they already did for non-2xx.
 async function sendPush(env, deviceToken, title, body, collapseId) {
@@ -483,37 +502,40 @@ function base64urlBytes(bytes) {
   return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-// ---- Device storage ----
-// Array of { token, raiderioEnabled, wowheadEnabled, spoilerFreeEnabled,
-// heartbreakThresholdPercent, notifyNonWorldFirstHeartbreaks }. Per-guild notification
-// filtering (a `guildIds` field per device) was tried and removed — it didn't work reliably;
-// these are much simpler independent per-category/per-value preferences, not guild-matching
-// logic, so the same concern doesn't really apply. getDevices normalizes away older shapes (a
-// plain token string, or an object missing some fields) with the same defaults addDevice
-// uses — so a device that registered before a given preference existed keeps its old
-// behavior (both categories on, spoilers not redacted, default threshold, world-first-only
-// heartbreaks).
+// ---- Cron tracking state (D1 `cron_state` table) ----
+// Small get/set-by-key helpers over a generic key/value table — these four keys (last-seen
+// post id, best pull % per guild/boss, which bosses already got a World First push, last-seen
+// Wowhead pubDate) are independent, occasionally-changing blobs, not one evolving record, so a
+// single-column-per-field table doesn't fit as naturally as it does for `devices` below.
+
+async function getCronState(env, key) {
+  const row = await env.DB.prepare("SELECT value FROM cron_state WHERE key = ?").bind(key).first();
+  return row ? row.value : null;
+}
+
+async function setCronState(env, key, value) {
+  await env.DB.prepare(
+    "INSERT INTO cron_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+  )
+    .bind(key, value)
+    .run();
+}
+
+// ---- Device storage (D1 `devices` table) ----
+// One row per device: token, raiderioEnabled, wowheadEnabled, spoilerFreeEnabled,
+// heartbreakThresholdPercent, notifyNonWorldFirstHeartbreaks. Per-guild notification filtering
+// (a `guildIds` field per device) was tried and removed — it didn't work reliably; these are
+// much simpler independent per-category/per-value preferences, not guild-matching logic, so
+// the same concern doesn't really apply.
 //
-// addDevice/removeDevice are read-modify-write, not atomic: two calls racing (e.g. two
-// devices registering close together, or a register racing the cron's own removeDevice on a
-// stale token) can both read the same blob and the second write clobbers the first. KV has
-// no compare-and-swap to close that window, and doing this properly would mean moving device
-// storage into a Durable Object. Deliberately not doing that here — with a personal app's
-// handful of devices registering rarely (basically just app launch, or a Settings toggle),
-// the actual odds of two writes landing in the same few-hundred-ms window are low enough not
-// to be worth the rewrite. Revisit if this ever tracks more than a few devices.
+// Updating an already-registered device is a single atomic UPSERT (D1/SQLite gives us
+// INSERT...ON CONFLICT, unlike KV's old read-modify-write-a-shared-blob approach, which could
+// drop a write if two registrations landed in the same window). Adding a brand-new device still
+// has a small check-then-insert race against MAX_DEVICES, same as before — with a personal
+// app's handful of devices registering rarely (basically just app launch, or a Settings
+// toggle), that's not worth closing with a transaction.
 
 function normalizeDevice(d) {
-  if (typeof d === "string") {
-    return {
-      token: d,
-      raiderioEnabled: true,
-      wowheadEnabled: true,
-      spoilerFreeEnabled: false,
-      heartbreakThresholdPercent: HEARTBREAK_DEFAULT_THRESHOLD_PERCENT,
-      notifyNonWorldFirstHeartbreaks: false,
-    };
-  }
   const threshold =
     typeof d.heartbreakThresholdPercent === "number" && !Number.isNaN(d.heartbreakThresholdPercent)
       ? Math.min(HEARTBREAK_MAX_THRESHOLD_PERCENT, Math.max(HEARTBREAK_MIN_THRESHOLD_PERCENT, d.heartbreakThresholdPercent))
@@ -528,35 +550,55 @@ function normalizeDevice(d) {
   };
 }
 
-async function getDevices(env) {
-  const raw = await env.PUSH_KV.get(DEVICES_KEY);
-  if (raw) return JSON.parse(raw).map(normalizeDevice);
+function rowToDevice(row) {
+  return normalizeDevice({
+    token: row.token,
+    raiderioEnabled: row.raiderio_enabled === 1,
+    wowheadEnabled: row.wowhead_enabled === 1,
+    spoilerFreeEnabled: row.spoiler_free_enabled === 1,
+    heartbreakThresholdPercent: row.heartbreak_threshold_percent,
+    notifyNonWorldFirstHeartbreaks: row.notify_non_world_first_heartbreaks === 1,
+  });
+}
 
-  // Fall back to the original key, from before this one existed. Never written again — the
-  // first re-registration migrates a device to the current key.
-  const legacyRaw = await env.PUSH_KV.get(LEGACY_TOKENS_KEY);
-  if (!legacyRaw) return [];
-  return JSON.parse(legacyRaw).map((token) => normalizeDevice(token));
+async function getDevices(env) {
+  const { results } = await env.DB.prepare("SELECT * FROM devices").all();
+  return results.map(rowToDevice);
 }
 
 /// Returns false (and writes nothing) if this would add a brand-new device past MAX_DEVICES —
 /// updating an already-registered device's preferences is always allowed, since that never
 /// grows the list.
 async function addDevice(env, token, prefs) {
-  const devices = await getDevices(env);
   const normalized = normalizeDevice({ token, ...prefs });
-  const existing = devices.findIndex((d) => d.token === token);
-  if (existing >= 0) {
-    devices[existing] = normalized;
-  } else {
-    if (devices.length >= MAX_DEVICES) return false;
-    devices.push(normalized);
+  const existing = await env.DB.prepare("SELECT 1 FROM devices WHERE token = ?").bind(token).first();
+  if (!existing) {
+    const countRow = await env.DB.prepare("SELECT COUNT(*) as count FROM devices").first();
+    if (countRow.count >= MAX_DEVICES) return false;
   }
-  await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
+  await env.DB.prepare(
+    `INSERT INTO devices
+       (token, raiderio_enabled, wowhead_enabled, spoiler_free_enabled, heartbreak_threshold_percent, notify_non_world_first_heartbreaks)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(token) DO UPDATE SET
+       raiderio_enabled = excluded.raiderio_enabled,
+       wowhead_enabled = excluded.wowhead_enabled,
+       spoiler_free_enabled = excluded.spoiler_free_enabled,
+       heartbreak_threshold_percent = excluded.heartbreak_threshold_percent,
+       notify_non_world_first_heartbreaks = excluded.notify_non_world_first_heartbreaks`
+  )
+    .bind(
+      normalized.token,
+      normalized.raiderioEnabled ? 1 : 0,
+      normalized.wowheadEnabled ? 1 : 0,
+      normalized.spoilerFreeEnabled ? 1 : 0,
+      normalized.heartbreakThresholdPercent,
+      normalized.notifyNonWorldFirstHeartbreaks ? 1 : 0
+    )
+    .run();
   return true;
 }
 
 async function removeDevice(env, token) {
-  const devices = (await getDevices(env)).filter((d) => d.token !== token);
-  await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
+  await env.DB.prepare("DELETE FROM devices WHERE token = ?").bind(token).run();
 }
