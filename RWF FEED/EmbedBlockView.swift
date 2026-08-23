@@ -111,7 +111,7 @@ struct EmbedBlockView: View {
     var body: some View {
         WebEmbed(info: info, height: $height)
             .frame(height: height)
-            .background(Color(.tertiarySystemBackground))
+            .background(Theme.cardSurface)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

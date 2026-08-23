@@ -79,13 +79,7 @@ struct BossSummaryRow: View {
 
                     if let worldFirst = summary.worldFirst {
                         HStack(spacing: 4) {
-                            Text("WORLD FIRST")
-                                .font(Theme.liveBadgeLabel)
-                                .tracking(Theme.liveBadgeTracking)
-                                .foregroundStyle(Color(hex: "#292B31"))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color(hex: "#D2CEFD"), in: Capsule())
+                            WorldFirstBadge()
                             Text(worldFirst.guild.displayName)
                                 .font(.system(size: 12))
                                 .foregroundStyle(Theme.textSecondary)

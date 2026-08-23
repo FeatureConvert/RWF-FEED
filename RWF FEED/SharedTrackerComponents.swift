@@ -60,6 +60,20 @@ struct LiveBadge: View {
     }
 }
 
+/// A fixed light-lavender pill, same in both appearance modes — like `Theme.live`, this one
+/// doesn't ramp with light/dark since it's a badge convention rather than themed chrome.
+struct WorldFirstBadge: View {
+    var body: some View {
+        Text("WORLD FIRST")
+            .font(Theme.liveBadgeLabel)
+            .tracking(Theme.liveBadgeTracking)
+            .foregroundStyle(Color(hex: "#292B31"))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color(hex: "#D2CEFD"), in: Capsule())
+    }
+}
+
 /// A hairline rule that fades to transparent 24pt from each edge, matching the spec's
 /// "Tracker row divider" note.
 struct FadingDivider: View {
