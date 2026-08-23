@@ -19,6 +19,7 @@ struct RWFFeedComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ComplicationProvider()) { entry in
             ComplicationEntryView(entry: entry)
+                .containerBackground(for: .widget) { Color.clear }
         }
         .configurationDisplayName("Boss Progress")
         .description("The furthest boss currently being pulled, and who's closest.")
