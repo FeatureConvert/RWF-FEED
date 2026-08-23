@@ -49,7 +49,7 @@ private struct EncounterPullEntry: Decodable {
     let isDefeated: Bool
 }
 
-struct WidgetBossState {
+struct WidgetBossState: Codable {
     let bossName: String
     let bossOrdinal: Int
     let totalBosses: Int
@@ -83,11 +83,27 @@ enum RWFWidgetData {
         return decoder
     }()
 
+    private static let cacheKey = "RWFWidgetData.lastKnownBossState"
+
     /// The furthest-progressed boss anyone is currently pulling (max ordinal among every
     /// guild's live, not-yet-defeated pull), plus whichever guild has the best (lowest
-    /// remaining health%) live pull on it. Returns nil on any network/decode failure so the
-    /// widget can fall back to its last known state instead of showing an error.
+    /// remaining health%) live pull on it. Falls back to the last successfully-fetched state
+    /// (persisted in UserDefaults — no App Group needed, this extension only ever needs its
+    /// own last value) on any network/decode failure, so a transient blip blanks the widget
+    /// for one WidgetKit refresh cycle rather than until the next one succeeds, which can be
+    /// 15+ minutes away under system budgeting.
     static func fetchCurrentBoss() async -> WidgetBossState? {
+        if let fresh = await fetchFreshBoss() {
+            if let data = try? JSONEncoder().encode(fresh) {
+                UserDefaults.standard.set(data, forKey: cacheKey)
+            }
+            return fresh
+        }
+        guard let cached = UserDefaults.standard.data(forKey: cacheKey) else { return nil }
+        return try? JSONDecoder().decode(WidgetBossState.self, from: cached)
+    }
+
+    private static func fetchFreshBoss() async -> WidgetBossState? {
         do {
             async let encountersTask = fetchEncounters()
             async let rankingsTask = fetchRankings()

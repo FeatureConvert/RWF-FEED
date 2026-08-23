@@ -48,7 +48,7 @@ private struct EncounterPullEntry: Decodable {
     let isDefeated: Bool
 }
 
-struct WatchBossState {
+struct WatchBossState: Codable {
     let bossName: String
     let bossOrdinal: Int
     let totalBosses: Int
@@ -81,10 +81,24 @@ enum RWFWatchData {
         return decoder
     }()
 
+    private static let cacheKey = "RWFWatchData.lastKnownBossState"
+
     /// The furthest-progressed boss anyone is currently pulling, plus whichever guild has the
-    /// best (lowest remaining health%) live pull on it. Returns nil on any network/decode
-    /// failure so callers can fall back to their last known state instead of showing an error.
+    /// best (lowest remaining health%) live pull on it. Falls back to the last successfully-
+    /// fetched state (persisted in UserDefaults) on any network/decode failure, so a transient
+    /// blip doesn't blank the watch app/complications until the next budgeted refresh.
     static func fetchCurrentBoss() async -> WatchBossState? {
+        if let fresh = await fetchFreshBoss() {
+            if let data = try? JSONEncoder().encode(fresh) {
+                UserDefaults.standard.set(data, forKey: cacheKey)
+            }
+            return fresh
+        }
+        guard let cached = UserDefaults.standard.data(forKey: cacheKey) else { return nil }
+        return try? JSONDecoder().decode(WatchBossState.self, from: cached)
+    }
+
+    private static func fetchFreshBoss() async -> WatchBossState? {
         do {
             async let encountersTask = fetchEncounters()
             async let rankingsTask = fetchRankings()
