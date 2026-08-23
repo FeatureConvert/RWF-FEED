@@ -60,6 +60,12 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .listRowBackground(Color.clear)
+
+                    Text("Created by Nxh - Illidan US 2026")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .listRowBackground(Color.clear)
                 }
             }
             .scrollContentBackground(.hidden)
