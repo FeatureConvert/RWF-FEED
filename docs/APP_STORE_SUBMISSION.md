@@ -31,26 +31,20 @@ Requires your own browser session (Apple ID with a paid Developer Program member
 $99/year, if not already enrolled) — I can't do this step. At https://appstoreconnect.apple.com:
 - Register the bundle ID (`RIO.RWF-FEED`) under Certificates, Identifiers & Profiles if not already there.
 - Create a new app record: pick a display name (App Store name, not necessarily "RWF Feed" — check availability), primary language, bundle ID, SKU (any unique internal string).
-- **Name collision — confirmed, not just theoretical**: **"Method RWF"** is already live on the
-  App Store (seller: Method Gaming Limited, developer: `rwf.gg`) — published by Method, one of
-  the actual top-tier guilds competing in the Race to World First (placed top 3 in the last
-  race). Its own description: *"The Race to World First app provides curated textual updates
-  about the World of Warcraft raid progress and shows always up to date leaderboards for each
-  boss and even each region"* with *"push notifications for up to the 10 first defeats of each
-  encounter."* That's functionally almost identical to RWF Feed (curated feed + kill push
-  notifications + per-boss/region leaderboards), live since 2021, with an established brand
-  around "RWF" specifically in this app category. This is a real risk, not a coincidental
-  name overlap:
-  - **App Review / user confusion**: "RWF Feed" next to "Method RWF," doing the same thing,
-    is exactly the kind of similarity that invites a rejection or a complaint from Method.
-  - **Trademark exposure**: years of use gives Method's app a stronger claim to "RWF" in this
-    specific context than a new entrant would have.
-  - **Recommendation**: drop "RWF" from the public-facing name before submitting. The app can
-    keep referencing "Race to World First" in its description (that's a generic community
-    term, not ownable) without using "RWF" as the brand itself. Internal code/bundle ID
-    (`RIO.RWF-FEED`) doesn't need to change — only the App Store display name and any
-    marketing copy are what App Review and users actually see. This hasn't been acted on yet;
-    flagging it here for a naming decision before the App Store Connect record is created.
+- **Name collision — known, reviewed, decided**: **"Method RWF"** is already live on the App
+  Store (seller: Method Gaming Limited, developer: `rwf.gg`) — published by Method, one of the
+  actual top-tier guilds competing in the Race to World First (placed top 3 in the last race).
+  Its own description: *"The Race to World First app provides curated textual updates about
+  the World of Warcraft raid progress and shows always up to date leaderboards for each boss
+  and even each region"* with *"push notifications for up to the 10 first defeats of each
+  encounter"* — functionally close to RWF Feed's own feature set. Last updated 11/2023, so
+  likely dormant/unmaintained at this point, which lowers (but doesn't eliminate) the practical
+  risk of a live objection.
+  - **Decision (2026-08-23)**: keep "RWF" in the app's name. "RWF" isn't a registered
+    trademark — it's shorthand for "Race to World First," a generic community term nobody
+    owns. Reviewed the collision above and decided the risk is acceptable rather than
+    renaming. Worth revisiting only if Method's app becomes active again or App Review
+    specifically flags it during a real submission.
 
 ### 2. Privacy Policy URL
 **Required** — Apple requires every app to have a privacy policy URL in App Store Connect,
