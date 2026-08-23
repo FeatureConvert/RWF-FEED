@@ -9,16 +9,45 @@
 /* Begin PBXBuildFile section */
 		2E5BB0767CBEDA47DCA898D8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4AC416F02B6E09B87A86311 /* Foundation.framework */; };
 		36A3B8B2E755F9AF558D55C4 /* RWFFeedWidgetEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */; };
+		3A2A921019DD84C01FBC333D /* WatchContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AECB949A34106095408BC4 /* WatchContentView.swift */; };
+		5137D7B23A02F58B7942637A /* ComplicationEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6C9D612497EEAE9676A946 /* ComplicationEntryView.swift */; };
+		5BA2B3C00596996497993CC6 /* RWFFeedWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E94B082E1472499040692FA7 /* RWFFeedWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5E3B30EF8F23ABF764C6A12E /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 18F42ADCDDA7E5EAEDCD036B /* SwiftUI.framework */; };
 		68726202318061076861F974 /* RWFFeedWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		70DB6DC2CBBD55BADFA1DEEF /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9927B1D126D5067B693EEF6B /* WidgetData.swift */; };
+		74A1DC290E6E338EB6B13A08 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26CFBA99BA22E00688D45301 /* WidgetKit.framework */; };
 		7AEABBA187B68C0EC169406E /* RWFFeedWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F74ED266B4954D24630CCB /* RWFFeedWidgetBundle.swift */; };
+		8C3539FEE033449E1DA2FD07 /* RWFFeedWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4AC6475E50987146655C91CE /* RWFFeedWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		99747713BC32C8CB676E143C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26CFBA99BA22E00688D45301 /* WidgetKit.framework */; };
+		9D6BC6EB2420F04FF2650FE3 /* RWFFeedComplicationBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A45C41158DB5931A5639E86 /* RWFFeedComplicationBundle.swift */; };
 		B6937C793597B7208A49F70E /* RWFTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B016037217970D48E9B20492 /* RWFTimelineProvider.swift */; };
 		CB49995C3F15B23B6B0EDA59 /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */; };
+		DAF49A97934B34C03F5046D8 /* WatchBossData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1341E8B91172A51C41788B /* WatchBossData.swift */; };
+		E3320F950AC76E32CE22E9E0 /* RWFFeedWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C77DA0A1270484D9E8872BDC /* RWFFeedWatchApp.swift */; };
+		E554C0883FA3F4A7A0CDE89F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B0FC18F1A181B80156803148 /* Foundation.framework */; };
+		E8F3F7B7E38C8E0627E0DF40 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 18F42ADCDDA7E5EAEDCD036B /* SwiftUI.framework */; };
+		EB944B76EBF7C185598C8113 /* ComplicationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEA045C842E7ED488BD1FA67 /* ComplicationProvider.swift */; };
+		EC2F9FC4F1AC04E2383E676C /* WatchBossData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1341E8B91172A51C41788B /* WatchBossData.swift */; };
 		F0D3DBD114DD26924E23CD27 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE7EB343A39132B73AE3F15 /* WidgetKit.framework */; };
 		FBE91DEBA81F75ACA7FA7F63 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F57A7D0CB23310DDBBFA27 /* SwiftUI.framework */; };
+		FC6A3E97222E933159ED7DF9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B0FC18F1A181B80156803148 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		04B90617BE6C607373A373D0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9DF911E9303A41EC001688F0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 11BC5B135861E30BA0223ECB;
+			remoteInfo = RWFFeedWatchWidget;
+		};
+		3B3C96955CBD9EDBB33B347F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9DF911E9303A41EC001688F0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3388A84054F529E8B4FE72DE;
+			remoteInfo = RWFFeedWatch;
+		};
 		8C11720819C525648319F0FA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9DF911E9303A41EC001688F0 /* Project object */;
@@ -29,6 +58,28 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		44F871D3EAA8324B809D7D36 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5BA2B3C00596996497993CC6 /* RWFFeedWatchWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8FB6BBD6291A79D9182847E8 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				8C3539FEE033449E1DA2FD07 /* RWFFeedWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EC447B192813BA6F2ADC66B5 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -43,17 +94,30 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0A45C41158DB5931A5639E86 /* RWFFeedComplicationBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedComplicationBundle.swift; sourceTree = "<group>"; };
+		18F42ADCDDA7E5EAEDCD036B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
 		2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetTheme.swift; sourceTree = "<group>"; };
+		26CFBA99BA22E00688D45301 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
 		31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWidgetEntryView.swift; sourceTree = "<group>"; };
 		36F74ED266B4954D24630CCB /* RWFFeedWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWidgetBundle.swift; sourceTree = "<group>"; };
 		37F57A7D0CB23310DDBBFA27 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
 		3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RWFFeedWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		41F8DFD60407DF3638828304 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4AC6475E50987146655C91CE /* RWFFeedWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RWFFeedWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C6C9D612497EEAE9676A946 /* ComplicationEntryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ComplicationEntryView.swift; sourceTree = "<group>"; };
 		7DE7EB343A39132B73AE3F15 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
+		8F1341E8B91172A51C41788B /* WatchBossData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchBossData.swift; sourceTree = "<group>"; };
+		985FA290B97B629075441880 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9927B1D126D5067B693EEF6B /* WidgetData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
 		9DF911F1303A41EC001688F0 /* RWF FEED.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RWF FEED.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4AC416F02B6E09B87A86311 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		B016037217970D48E9B20492 /* RWFTimelineProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFTimelineProvider.swift; sourceTree = "<group>"; };
+		B0FC18F1A181B80156803148 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		B3AECB949A34106095408BC4 /* WatchContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchContentView.swift; sourceTree = "<group>"; };
+		C77DA0A1270484D9E8872BDC /* RWFFeedWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWatchApp.swift; sourceTree = "<group>"; };
+		DEA045C842E7ED488BD1FA67 /* ComplicationProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ComplicationProvider.swift; sourceTree = "<group>"; };
+		E0FADB28DDB6D9C003B01D7B /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E94B082E1472499040692FA7 /* RWFFeedWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RWFFeedWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -84,9 +148,51 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B15BB47110E5876585A85E8C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC6A3E97222E933159ED7DF9 /* Foundation.framework in Frameworks */,
+				74A1DC290E6E338EB6B13A08 /* WidgetKit.framework in Frameworks */,
+				E8F3F7B7E38C8E0627E0DF40 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CD6DC82910296EE0D613C79F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E554C0883FA3F4A7A0CDE89F /* Foundation.framework in Frameworks */,
+				5E3B30EF8F23ABF764C6A12E /* SwiftUI.framework in Frameworks */,
+				99747713BC32C8CB676E143C /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0D6228B9A286500D4BE04E50 /* RWFFeedWatchWidget */ = {
+			isa = PBXGroup;
+			children = (
+				7C6C9D612497EEAE9676A946 /* ComplicationEntryView.swift */,
+				DEA045C842E7ED488BD1FA67 /* ComplicationProvider.swift */,
+				0A45C41158DB5931A5639E86 /* RWFFeedComplicationBundle.swift */,
+				985FA290B97B629075441880 /* Info.plist */,
+			);
+			name = RWFFeedWatchWidget;
+			path = RWFFeedWatchWidget;
+			sourceTree = "<group>";
+		};
+		3B8057A2366DD0C4D8531881 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				B0FC18F1A181B80156803148 /* Foundation.framework */,
+				18F42ADCDDA7E5EAEDCD036B /* SwiftUI.framework */,
+				26CFBA99BA22E00688D45301 /* WidgetKit.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
 		57C5B43504D21F8412CDE693 /* RWFFeedWidget */ = {
 			isa = PBXGroup;
 			children = (
@@ -111,6 +217,17 @@
 			name = iOS;
 			sourceTree = "<group>";
 		};
+		8449B6AF21786E8FB537C04F /* RWFFeedWatch */ = {
+			isa = PBXGroup;
+			children = (
+				C77DA0A1270484D9E8872BDC /* RWFFeedWatchApp.swift */,
+				B3AECB949A34106095408BC4 /* WatchContentView.swift */,
+				E0FADB28DDB6D9C003B01D7B /* Info.plist */,
+			);
+			name = RWFFeedWatch;
+			path = RWFFeedWatch;
+			sourceTree = "<group>";
+		};
 		9DF911E8303A41EC001688F0 = {
 			isa = PBXGroup;
 			children = (
@@ -118,6 +235,9 @@
 				9DF911F2303A41EC001688F0 /* Products */,
 				E69BA7F9C091E6EB4880B25E /* Frameworks */,
 				57C5B43504D21F8412CDE693 /* RWFFeedWidget */,
+				8449B6AF21786E8FB537C04F /* RWFFeedWatch */,
+				0D6228B9A286500D4BE04E50 /* RWFFeedWatchWidget */,
+				CF785ABD45C0EB17B9FA541F /* RWFWatchShared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -126,14 +246,26 @@
 			children = (
 				9DF911F1303A41EC001688F0 /* RWF FEED.app */,
 				3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */,
+				4AC6475E50987146655C91CE /* RWFFeedWatch.app */,
+				E94B082E1472499040692FA7 /* RWFFeedWatchWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		CF785ABD45C0EB17B9FA541F /* RWFWatchShared */ = {
+			isa = PBXGroup;
+			children = (
+				8F1341E8B91172A51C41788B /* WatchBossData.swift */,
+			);
+			name = RWFWatchShared;
+			path = RWFWatchShared;
 			sourceTree = "<group>";
 		};
 		E69BA7F9C091E6EB4880B25E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				7A37F25DE81E090610765464 /* iOS */,
+				3B8057A2366DD0C4D8531881 /* watchOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -158,6 +290,42 @@
 			productReference = 3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		11BC5B135861E30BA0223ECB /* RWFFeedWatchWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 977CB3E67CE492248A4CDB3D /* Build configuration list for PBXNativeTarget "RWFFeedWatchWidget" */;
+			buildPhases = (
+				F9B986B296B51910C4674852 /* Sources */,
+				B15BB47110E5876585A85E8C /* Frameworks */,
+				945452BF0700CC9D445E445B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RWFFeedWatchWidget;
+			productName = RWFFeedWatchWidget;
+			productReference = E94B082E1472499040692FA7 /* RWFFeedWatchWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		3388A84054F529E8B4FE72DE /* RWFFeedWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 296E79126C160E57E426B46F /* Build configuration list for PBXNativeTarget "RWFFeedWatch" */;
+			buildPhases = (
+				632FFB1CAB8CD674032D9F5E /* Sources */,
+				CD6DC82910296EE0D613C79F /* Frameworks */,
+				02BFA2C87FD6DEEF4AF97B2E /* Resources */,
+				44F871D3EAA8324B809D7D36 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F459AC42D11F31CE63B99758 /* PBXTargetDependency */,
+			);
+			name = RWFFeedWatch;
+			productName = RWFFeedWatch;
+			productReference = 4AC6475E50987146655C91CE /* RWFFeedWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 		9DF911F0303A41EC001688F0 /* RWF FEED */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9DF911FC303A41ED001688F0 /* Build configuration list for PBXNativeTarget "RWF FEED" */;
@@ -166,11 +334,13 @@
 				9DF911EE303A41EC001688F0 /* Frameworks */,
 				9DF911EF303A41EC001688F0 /* Resources */,
 				EC447B192813BA6F2ADC66B5 /* Embed Foundation Extensions */,
+				8FB6BBD6291A79D9182847E8 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				EE36DEABE2E2C5322952A7CC /* PBXTargetDependency */,
+				FB7FA6A422598093AC75E8C1 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9DF911F3303A41EC001688F0 /* RWF FEED */,
@@ -191,6 +361,14 @@
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					050F2008C9B004F11BCEFB2D = {
+						CreatedOnToolsVersion = 26.6;
+						ProvisioningStyle = Automatic;
+					};
+					11BC5B135861E30BA0223ECB = {
+						CreatedOnToolsVersion = 26.6;
+						ProvisioningStyle = Automatic;
+					};
+					3388A84054F529E8B4FE72DE = {
 						CreatedOnToolsVersion = 26.6;
 						ProvisioningStyle = Automatic;
 					};
@@ -215,12 +393,28 @@
 			targets = (
 				9DF911F0303A41EC001688F0 /* RWF FEED */,
 				050F2008C9B004F11BCEFB2D /* RWFFeedWidget */,
+				3388A84054F529E8B4FE72DE /* RWFFeedWatch */,
+				11BC5B135861E30BA0223ECB /* RWFFeedWatchWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		02BFA2C87FD6DEEF4AF97B2E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6EABC4FE6A592AAF762A321B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		945452BF0700CC9D445E445B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -237,6 +431,16 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		632FFB1CAB8CD674032D9F5E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E3320F950AC76E32CE22E9E0 /* RWFFeedWatchApp.swift in Sources */,
+				3A2A921019DD84C01FBC333D /* WatchContentView.swift in Sources */,
+				EC2F9FC4F1AC04E2383E676C /* WatchBossData.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9DF911ED303A41EC001688F0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +460,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F9B986B296B51910C4674852 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5137D7B23A02F58B7942637A /* ComplicationEntryView.swift in Sources */,
+				EB944B76EBF7C185598C8113 /* ComplicationProvider.swift in Sources */,
+				9D6BC6EB2420F04FF2650FE3 /* RWFFeedComplicationBundle.swift in Sources */,
+				DAF49A97934B34C03F5046D8 /* WatchBossData.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -264,6 +479,18 @@
 			name = RWFFeedWidget;
 			target = 050F2008C9B004F11BCEFB2D /* RWFFeedWidget */;
 			targetProxy = 8C11720819C525648319F0FA /* PBXContainerItemProxy */;
+		};
+		F459AC42D11F31CE63B99758 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RWFFeedWatchWidget;
+			target = 11BC5B135861E30BA0223ECB /* RWFFeedWatchWidget */;
+			targetProxy = 04B90617BE6C607373A373D0 /* PBXContainerItemProxy */;
+		};
+		FB7FA6A422598093AC75E8C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RWFFeedWatch;
+			target = 3388A84054F529E8B4FE72DE /* RWFFeedWatch */;
+			targetProxy = 3B3C96955CBD9EDBB33B347F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -298,6 +525,37 @@
 			};
 			name = Debug;
 		};
+		64BC1AA06F86374B29086A61 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5X98G8X3FJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RWFFeedWatch/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "RIO.RWF-FEED.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 		7944D9FDFEC9C23C3747A706 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -328,6 +586,36 @@
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
+		};
+		8CD733F6433071F367FDC790 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5X98G8X3FJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RWFFeedWatch/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "RIO.RWF-FEED.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
 		};
 		9DF911FA303A41ED001688F0 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -516,6 +804,65 @@
 			};
 			name = Release;
 		};
+		9E7FBC01CF4F549537DF4134 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5X98G8X3FJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RWFFeedWatchWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "RIO.RWF-FEED.watchkitapp.RWFFeedWatchWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		DC547822AB141AF954A23B17 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5X98G8X3FJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RWFFeedWatchWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "RIO.RWF-FEED.watchkitapp.RWFFeedWatchWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -524,6 +871,24 @@
 			buildConfigurations = (
 				7944D9FDFEC9C23C3747A706 /* Release */,
 				40FFE71A60D52F09DAF2526F /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		296E79126C160E57E426B46F /* Build configuration list for PBXNativeTarget "RWFFeedWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				64BC1AA06F86374B29086A61 /* Release */,
+				8CD733F6433071F367FDC790 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		977CB3E67CE492248A4CDB3D /* Build configuration list for PBXNativeTarget "RWFFeedWatchWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9E7FBC01CF4F549537DF4134 /* Release */,
+				DC547822AB141AF954A23B17 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
