@@ -7,13 +7,13 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct GuildAvatar: View {
     let guild: RaceGuild
-    /// AsyncImage never retries a failed load on its own — bumping this and keying `.id()` to
-    /// it forces a fresh attempt. Guild logos are fetched from raider.io's CDN, which is
-    /// reliable in practice, but a transient blip otherwise permanently shows the initials
-    /// fallback for that guild until something else causes this view to be recreated.
+    @State private var uiImage: UIImage?
+    /// Bumping this restarts `load()` (it's keyed into the `.task(id:)` below) — used both to
+    /// retry a failed load and to refetch if `guild.logo` itself changes.
     @State private var retryToken = 0
     private static let maxRetries = 2
 
@@ -37,27 +37,44 @@ struct GuildAvatar: View {
     }
 
     var body: some View {
-        AsyncImage(url: URL(string: guild.logo)) { phase in
-            if let image = phase.image {
-                image.resizable().aspectRatio(contentMode: .fill)
+        ZStack {
+            if let uiImage {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
             } else {
-                ZStack {
-                    Circle().fill(colors.background)
-                    Text(initials)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(colors.foreground)
-                }
-                .task(id: phase.error?.localizedDescription) {
-                    guard phase.error != nil, retryToken < Self.maxRetries else { return }
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    guard !Task.isCancelled else { return }
-                    retryToken += 1
-                }
+                Circle().fill(colors.background)
+                Text(initials)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(colors.foreground)
             }
         }
-        .id(retryToken)
         .frame(width: Theme.guildLogoDiameter, height: Theme.guildLogoDiameter)
         .clipShape(Circle())
+        .task(id: "\(guild.logo)#\(retryToken)") {
+            await load()
+        }
+    }
+
+    /// Not AsyncImage: guild logos are served through Cloudflare Polish (raider.io's CDN),
+    /// which content-negotiates on the Accept header and serves WebP instead of PNG once the
+    /// client admits image/webp support — which iOS's networking stack does by default, but
+    /// AsyncImage has no way to override the request headers it sends. A custom fetch with an
+    /// explicit Accept forces PNG/JPEG back, sidestepping that entirely rather than depending
+    /// on WebP decode support. Retries up to twice on any other failure (transient network
+    /// blips), since AsyncImage-style loading has no built-in retry either.
+    private func load() async {
+        guard let url = URL(string: guild.logo) else { return }
+        var request = URLRequest(url: url)
+        request.setValue("image/png,image/jpeg,image/*;q=0.8", forHTTPHeaderField: "Accept")
+        if let (data, _) = try? await URLSession.shared.data(for: request), let image = UIImage(data: data) {
+            uiImage = image
+            return
+        }
+        guard retryToken < Self.maxRetries else { return }
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        guard !Task.isCancelled else { return }
+        retryToken += 1
     }
 }
 
