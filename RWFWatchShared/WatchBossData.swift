@@ -48,7 +48,7 @@ private struct EncounterPullEntry: Decodable {
     let isDefeated: Bool
 }
 
-struct WatchBossState: Codable {
+struct WatchBossState {
     let bossName: String
     let bossOrdinal: Int
     let totalBosses: Int
@@ -67,33 +67,23 @@ struct WatchBossState: Codable {
 
 enum RWFWatchData {
     private static let raidSlug = "the-venomous-abyss"
-    /// Scoped to whichever target (watch app or complication extension) is running this
-    /// code — they're separate sandboxes even though they share this source file, so each
-    /// caches its own last-known state independently. No App Group needed for that.
-    private static let cacheKey = "RWFWatchData.lastKnownBossState"
 
     private static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
-        // raid-race's dates come back with fractional seconds; raid-rankings' don't — accept
-        // both rather than only the format whichever field happened to be tested against.
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let isoNoFraction = ISO8601DateFormatter()
-        isoNoFraction.formatOptions = [.withInternetDateTime]
         decoder.dateDecodingStrategy = .custom { decoderInner in
             let container = try decoderInner.singleValueContainer()
             let string = try container.decode(String.self)
             if let date = iso.date(from: string) { return date }
-            if let date = isoNoFraction.date(from: string) { return date }
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unrecognized date: \(string)")
         }
         return decoder
     }()
 
     /// The furthest-progressed boss anyone is currently pulling, plus whichever guild has the
-    /// best (lowest remaining health%) live pull on it. Falls back to the last successfully-
-    /// fetched state (cached in this target's own UserDefaults) on any network/decode failure,
-    /// or when nobody currently has a live pull — nil only if we've never fetched successfully.
+    /// best (lowest remaining health%) live pull on it. Returns nil on any network/decode
+    /// failure so callers can fall back to their last known state instead of showing an error.
     static func fetchCurrentBoss() async -> WatchBossState? {
         do {
             async let encountersTask = fetchEncounters()
@@ -115,29 +105,17 @@ enum RWFWatchData {
 
             guard let frontierSlug = bestPullBySlug.keys.max(by: { (encounterBySlug[$0]?.ordinal ?? -1) < (encounterBySlug[$1]?.ordinal ?? -1) }),
                   let boss = encounterBySlug[frontierSlug] else {
-                return loadCachedState()
+                return nil
             }
             let best = bestPullBySlug[frontierSlug]
 
-            let state = WatchBossState(
+            return WatchBossState(
                 bossName: boss.name, bossOrdinal: boss.ordinal + 1, totalBosses: encounters.count, iconUrl: boss.iconUrl,
                 bestGuildName: best?.guild, bestPercent: best?.percent, pullCount: best?.pullCount
             )
-            cache(state)
-            return state
         } catch {
-            return loadCachedState()
+            return nil
         }
-    }
-
-    private static func cache(_ state: WatchBossState) {
-        guard let data = try? JSONEncoder().encode(state) else { return }
-        UserDefaults.standard.set(data, forKey: cacheKey)
-    }
-
-    private static func loadCachedState() -> WatchBossState? {
-        guard let data = UserDefaults.standard.data(forKey: cacheKey) else { return nil }
-        return try? JSONDecoder().decode(WatchBossState.self, from: data)
     }
 
     private static func fetchEncounters() async throws -> [EncounterRef] {
