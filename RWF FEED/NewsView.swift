@@ -17,7 +17,7 @@ struct NewsView: View {
                 ScreenHeader(
                     title: "News", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated,
                     creditLabel: "News by Wowhead", creditURL: URL(string: "https://www.wowhead.com/news")!,
-                    creditMark: nil
+                    creditMark: "WowheadMark"
                 )
 
                 Group {

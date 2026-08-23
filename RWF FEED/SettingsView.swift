@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @ObservedObject private var appearance = AppearanceSettings.shared
+    @ObservedObject private var notificationPreferences = NotificationPreferences.shared
     @State private var showingMailCompose = false
     private let funFact = WoWFunFacts.random()
 
@@ -33,6 +34,26 @@ struct SettingsView: View {
                     Text("Appearance")
                         .foregroundStyle(Theme.textSecondary)
                 }
+
+                Section {
+                    Toggle(isOn: $notificationPreferences.raiderioEnabled) {
+                        Label("Raider.IO Updates", systemImage: "bolt.fill")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                    Toggle(isOn: $notificationPreferences.wowheadEnabled) {
+                        Label("Wowhead News", systemImage: "newspaper.fill")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                } header: {
+                    Text("Notifications")
+                        .foregroundStyle(Theme.textSecondary)
+                } footer: {
+                    Text("Raider.IO Updates covers new feed posts and Major Heartbreaker close-call alerts.")
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .listRowBackground(Theme.cardSurface)
 
                 Section {
                     Button(action: sendFeedback) {
@@ -60,6 +81,20 @@ struct SettingsView: View {
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 14, height: 14)
                             Text("Data provided by Raider.IO")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowBackground(Color.clear)
+
+                    Link(destination: URL(string: "https://www.wowhead.com/news")!) {
+                        HStack(spacing: 5) {
+                            Image("WowheadMark")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 14, height: 14)
+                            Text("News provided by Wowhead")
                                 .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)
                         }

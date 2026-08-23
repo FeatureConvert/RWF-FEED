@@ -1,21 +1,23 @@
-// rwf-feed-push — polls raider.io's Venomous Abyss coverage feed once a minute (Cloudflare
-// Cron's minimum granularity) and pushes a notification via APNs the moment a new post
-// appears. This is what lets RWF FEED notify you even while the app is fully closed —
-// local notifications only fire while the app's own polling loop is running.
+// rwf-feed-push — polls raider.io's Venomous Abyss coverage feed and Wowhead's WoW news RSS
+// once a minute (Cloudflare Cron's minimum granularity) and pushes a notification via APNs
+// the moment something new appears. This is what lets RWF FEED notify you even while the app
+// is fully closed — local notifications only fire while the app's own polling loop is running.
 //
-// Every registered device gets every global feed post, plus "Major Heartbreaker" pushes for
-// sub-5.01% close calls (see checkHeartbreaks) — there's no per-guild notification filtering
-// (removed; it wasn't working reliably).
+// Each registered device carries two independent preference flags — raiderioEnabled (new
+// feed posts, "Major Heartbreaker" close calls) and wowheadEnabled (new WoW news articles) —
+// set from the toggles in Settings. Filtering has to happen here rather than on-device: once
+// APNs has delivered a push while the app is closed, there's no client-side hook to veto it.
+// There's no per-guild filtering within raiderioEnabled (removed; it wasn't working reliably).
 //
 // Endpoints:
-//   POST /register              { "deviceToken": "<hex>" }
+//   POST /register              { "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool }
 //   GET  /check?secret=<value>  — manually trigger a poll, for testing
 //   GET  /test-push?secret=<value> — send a placeholder push to every registered device
 //
 // /check and /test-push require ADMIN_SECRET (a Worker secret, see README) as a `secret`
 // query param — without it, anyone who finds the URL could enumerate every registered
 // device token from /test-push's response, or spam real polls via /check. /register has no
-// such gate: it only ever adds one device's own token, nothing to protect.
+// such gate: it only ever adds/updates one device's own token, nothing to protect.
 
 const FEED_SLUG = "the-venomous-abyss-global-coverage";
 const RAID_SLUG = "the-venomous-abyss";
@@ -24,10 +26,12 @@ const DEVICES_KEY = "devices";
 const LEGACY_TOKENS_KEY = "deviceTokens";
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
 const HEARTBREAK_THRESHOLD_PERCENT = 5.01;
+const WOWHEAD_NEWS_URL = "https://www.wowhead.com/news/rss/retail";
+const WOWHEAD_LAST_SEEN_KEY = "wowheadLastSeenPubDate";
 
 export default {
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkHeartbreaks(env)]));
+    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkHeartbreaks(env), checkWowheadNews(env)]));
   },
 
   async fetch(request, env) {
@@ -38,14 +42,21 @@ export default {
       if (!body || typeof body.deviceToken !== "string" || !body.deviceToken) {
         return new Response("Missing deviceToken", { status: 400 });
       }
-      await addDevice(env, body.deviceToken);
+      await addDevice(env, body.deviceToken, {
+        raiderioEnabled: body.raiderioEnabled,
+        wowheadEnabled: body.wowheadEnabled,
+      });
       return new Response("OK");
     }
 
     if (request.method === "GET" && url.pathname === "/check") {
       if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
-      const [posts, heartbreaks] = await Promise.all([checkForNewPosts(env), checkHeartbreaks(env)]);
-      return new Response(JSON.stringify({ posts, heartbreaks }), {
+      const [posts, heartbreaks, wowheadNews] = await Promise.all([
+        checkForNewPosts(env),
+        checkHeartbreaks(env),
+        checkWowheadNews(env),
+      ]);
+      return new Response(JSON.stringify({ posts, heartbreaks, wowheadNews }), {
         headers: { "content-type": "application/json" },
       });
     }
@@ -54,15 +65,15 @@ export default {
       if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
       const devices = await getDevices(env);
       const results = [];
-      for (const token of devices) {
+      for (const device of devices) {
         const result = await sendPush(
           env,
-          token,
+          device.token,
           "Test push",
           "If you see this, push delivery works.",
           `test-${Date.now()}`
         );
-        results.push({ token, ...result });
+        results.push({ token: device.token, ...result });
       }
       return new Response(JSON.stringify({ deviceCount: devices.length, results }, null, 2), {
         headers: { "content-type": "application/json" },
@@ -112,12 +123,12 @@ async function checkForNewPosts(env) {
     .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
 
   if (newPosts.length > 0) {
-    const devices = await getDevices(env);
+    const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
     for (const post of newPosts) {
       const title = "Venomous Abyss";
       const body = post.contentPreview || "New update";
-      for (const token of devices) {
-        await sendPush(env, token, title, body, `post-${post.id}`);
+      for (const device of devices) {
+        await sendPush(env, device.token, title, body, `post-${post.id}`);
       }
     }
   }
@@ -133,7 +144,7 @@ async function checkForNewPosts(env) {
 /// Only pushes on a new record (this guild's lowest-ever percent on this boss) so a guild
 /// stuck wiping around the same percent for an hour doesn't get a push every single minute.
 async function checkHeartbreaks(env) {
-  const devices = await getDevices(env);
+  const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
   if (devices.length === 0) return { ok: true, watchedDevices: 0 };
 
   const [raceResp, rankResp] = await Promise.all([
@@ -173,10 +184,10 @@ async function checkHeartbreaks(env) {
       if (!isNewRecord || isFirstRun) continue;
 
       const bossName = encounterBySlug[pull.slug]?.name ?? pull.slug;
-      for (const token of devices) {
+      for (const device of devices) {
         await sendPush(
           env,
-          token,
+          device.token,
           "Major Heartbreaker",
           `${entry.guild.displayName} wipes on ${bossName} at ${pull.bestPercent.toFixed(2)}%`,
           `heartbreak-${key}-${Math.round(pull.bestPercent * 100)}`
@@ -188,6 +199,75 @@ async function checkHeartbreaks(env) {
 
   await env.PUSH_KV.put(HEARTBREAK_BEST_KEY, JSON.stringify(nextBest));
   return { ok: true, watchedDevices: devices.length, pushCount };
+}
+
+/// New WoW news pushes — Wowhead's public "retail" RSS feed (WoW only, no Diablo/other-game
+/// articles). Diffed by pubDate against the newest article seen last run, same shape as
+/// checkForNewPosts. Regex-parsed rather than pulling in an XML library for a handful of
+/// fields (title/guid/pubDate) out of a feed whose structure is stable and simple.
+async function checkWowheadNews(env) {
+  const resp = await fetch(WOWHEAD_NEWS_URL);
+  if (!resp.ok) return { ok: false, status: resp.status };
+  const xml = await resp.text();
+
+  const items = [];
+  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+  let match;
+  while ((match = itemRegex.exec(xml)) !== null) {
+    const block = match[1];
+    const title = decodeXmlEntities(extractXmlTag(block, "title"));
+    const guid = extractXmlTag(block, "guid") || extractXmlTag(block, "link");
+    const pubDateRaw = extractXmlTag(block, "pubDate");
+    const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
+    if (title && guid && pubDate && !isNaN(pubDate.getTime())) {
+      items.push({ title, guid, pubDate });
+    }
+  }
+  if (items.length === 0) return { ok: true, newArticles: 0 };
+
+  items.sort((a, b) => b.pubDate - a.pubDate);
+  const newest = items[0];
+
+  const lastSeenRaw = await env.PUSH_KV.get(WOWHEAD_LAST_SEEN_KEY);
+  if (lastSeenRaw === null) {
+    // First run ever: record the baseline so we don't blast a notification for every
+    // article already sitting in the feed's backlog.
+    await env.PUSH_KV.put(WOWHEAD_LAST_SEEN_KEY, newest.pubDate.toISOString());
+    return { ok: true, newArticles: 0, baseline: newest.guid };
+  }
+
+  const lastSeenDate = new Date(lastSeenRaw);
+  const newArticles = items.filter((item) => item.pubDate > lastSeenDate).sort((a, b) => a.pubDate - b.pubDate);
+
+  if (newArticles.length > 0) {
+    const devices = (await getDevices(env)).filter((d) => d.wowheadEnabled);
+    for (const article of newArticles) {
+      const collapseId = `wowhead-${article.guid.replace(/[^a-zA-Z0-9]/g, "").slice(-40)}`;
+      for (const device of devices) {
+        await sendPush(env, device.token, "WoW News", article.title, collapseId);
+      }
+    }
+  }
+
+  await env.PUSH_KV.put(WOWHEAD_LAST_SEEN_KEY, newest.pubDate.toISOString());
+  return { ok: true, newArticles: newArticles.length };
+}
+
+function extractXmlTag(block, tag) {
+  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const m = block.match(re);
+  return m ? m[1].trim() : null;
+}
+
+function decodeXmlEntities(str) {
+  if (!str) return str;
+  return str
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 // ---- APNs ----
@@ -293,38 +373,57 @@ function base64urlBytes(bytes) {
 }
 
 // ---- Device storage ----
-// Plain array of hex token strings. Per-guild notification filtering (a `guildIds` field per
-// device) was tried and removed — it didn't work reliably. getDevices normalizes away any
-// devices still stored in that shape from before.
+// Array of { token, raiderioEnabled, wowheadEnabled }. Per-guild notification filtering (a
+// `guildIds` field per device) was tried and removed — it didn't work reliably; these two
+// flags are a much simpler binary per-category toggle, not guild-matching logic, so the same
+// concern doesn't really apply. getDevices normalizes away both older shapes (a plain token
+// string, or an object without the flags) by defaulting missing flags to true — so every
+// device that registered before this feature shipped keeps getting both categories.
 //
 // addDevice/removeDevice are read-modify-write, not atomic: two calls racing (e.g. two
 // devices registering close together, or a register racing the cron's own removeDevice on a
 // stale token) can both read the same blob and the second write clobbers the first. KV has
 // no compare-and-swap to close that window, and doing this properly would mean moving device
 // storage into a Durable Object. Deliberately not doing that here — with a personal app's
-// handful of devices registering rarely (basically just app launch), the actual odds of two
-// writes landing in the same few-hundred-ms window are low enough not to be worth the
-// rewrite. Revisit if this ever tracks more than a few devices.
+// handful of devices registering rarely (basically just app launch, or a Settings toggle),
+// the actual odds of two writes landing in the same few-hundred-ms window are low enough not
+// to be worth the rewrite. Revisit if this ever tracks more than a few devices.
 
 async function getDevices(env) {
   const raw = await env.PUSH_KV.get(DEVICES_KEY);
-  if (raw) return JSON.parse(raw).map((d) => (typeof d === "string" ? d : d.token));
+  if (raw) {
+    return JSON.parse(raw).map((d) =>
+      typeof d === "string"
+        ? { token: d, raiderioEnabled: true, wowheadEnabled: true }
+        : {
+            token: d.token,
+            raiderioEnabled: d.raiderioEnabled !== false,
+            wowheadEnabled: d.wowheadEnabled !== false,
+          }
+    );
+  }
 
   // Fall back to the original key, from before this one existed. Never written again — the
   // first re-registration migrates a device to the current key.
   const legacyRaw = await env.PUSH_KV.get(LEGACY_TOKENS_KEY);
-  return legacyRaw ? JSON.parse(legacyRaw) : [];
+  if (!legacyRaw) return [];
+  return JSON.parse(legacyRaw).map((token) => ({ token, raiderioEnabled: true, wowheadEnabled: true }));
 }
 
-async function addDevice(env, token) {
+async function addDevice(env, token, prefs) {
   const devices = await getDevices(env);
-  if (!devices.includes(token)) {
-    devices.push(token);
-    await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
+  const raiderioEnabled = prefs?.raiderioEnabled !== false;
+  const wowheadEnabled = prefs?.wowheadEnabled !== false;
+  const existing = devices.findIndex((d) => d.token === token);
+  if (existing >= 0) {
+    devices[existing] = { token, raiderioEnabled, wowheadEnabled };
+  } else {
+    devices.push({ token, raiderioEnabled, wowheadEnabled });
   }
+  await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
 }
 
 async function removeDevice(env, token) {
-  const devices = (await getDevices(env)).filter((t) => t !== token);
+  const devices = (await getDevices(env)).filter((d) => d.token !== token);
   await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
 }
