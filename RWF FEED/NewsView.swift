@@ -10,6 +10,7 @@ import SwiftUI
 
 struct NewsView: View {
     @StateObject private var viewModel = NewsViewModel()
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -18,7 +19,9 @@ struct NewsView: View {
                     title: "News", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated,
                     creditLabel: "News by Wowhead", creditURL: URL(string: "https://www.wowhead.com/news")!,
                     creditMark: "WowheadMark"
-                )
+                ) {
+                    showingSettings = true
+                }
 
                 Group {
                     if viewModel.articles.isEmpty && viewModel.isLoading {
@@ -50,6 +53,9 @@ struct NewsView: View {
         }
         .onDisappear {
             viewModel.stopPolling()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
     }
 }

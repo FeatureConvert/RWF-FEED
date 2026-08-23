@@ -10,11 +10,14 @@ import SwiftUI
 
 struct KillFeedView: View {
     @StateObject private var viewModel = KillFeedViewModel()
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated)
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
+                    showingSettings = true
+                }
 
                 Group {
                     if viewModel.events.isEmpty && viewModel.isLoading {
@@ -44,6 +47,9 @@ struct KillFeedView: View {
         }
         .onDisappear {
             viewModel.stopPolling()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
     }
 }

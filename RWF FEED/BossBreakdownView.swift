@@ -12,11 +12,14 @@ import SwiftUI
 
 struct BossBreakdownView: View {
     @StateObject private var viewModel = BossBreakdownViewModel()
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Boss List", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated)
+                ScreenHeader(title: "Boss List", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
+                    showingSettings = true
+                }
 
                 Group {
                     if viewModel.summaries.isEmpty && viewModel.isLoading {
@@ -46,6 +49,9 @@ struct BossBreakdownView: View {
         }
         .onDisappear {
             viewModel.stopPolling()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
     }
 }

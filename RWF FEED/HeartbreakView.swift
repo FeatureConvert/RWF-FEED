@@ -10,11 +10,14 @@ import SwiftUI
 
 struct HeartbreakView: View {
     @StateObject private var viewModel = HeartbreakViewModel()
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Heartbreak", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated)
+                ScreenHeader(title: "Heartbreak", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
+                    showingSettings = true
+                }
 
                 Group {
                     if viewModel.closeCalls.isEmpty && viewModel.isLoading {
@@ -57,6 +60,9 @@ struct HeartbreakView: View {
         }
         .onDisappear {
             viewModel.stopPolling()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
     }
 }

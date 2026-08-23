@@ -7,11 +7,14 @@ import SwiftUI
 
 struct TrackerView: View {
     @StateObject private var viewModel = TrackerViewModel()
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated)
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
+                    showingSettings = true
+                }
 
                 Group {
                     if viewModel.standings.isEmpty && viewModel.isLoading {
@@ -46,6 +49,9 @@ struct TrackerView: View {
         }
         .onDisappear {
             viewModel.stopPolling()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
     }
 }
