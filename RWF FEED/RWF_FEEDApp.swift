@@ -19,6 +19,11 @@ struct RWF_FEEDApp: App {
                     // The window doesn't exist yet at AppearanceSettings.init() time, so the
                     // persisted mode needs to be (re-)applied once a window actually exists.
                     AppearanceSettings.shared.applyToWindows()
+                    // Was previously only triggered from FeedViewModel.startPolling(), which
+                    // meant a user whose Default Tab wasn't Feed could go a whole session
+                    // without ever registering for push (or re-registering a rotated APNs
+                    // token) — belongs at the app level, not inside one tab's view model.
+                    NotificationManager.shared.requestAuthorizationIfNeeded()
                 }
         }
     }

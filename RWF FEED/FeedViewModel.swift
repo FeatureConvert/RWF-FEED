@@ -17,7 +17,6 @@ final class FeedViewModel: ObservableObject {
     private var pollTask: Task<Void, Never>?
 
     func startPolling(interval: TimeInterval = 30) {
-        NotificationManager.shared.requestAuthorizationIfNeeded()
         stopPolling()
         pollTask = Task { [weak self] in
             guard let self else { return }
