@@ -35,10 +35,8 @@ final class KillFeedViewModel: ObservableObject {
         if events.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
-            async let trackerTask = service.fetchTracker()
-            async let rankingsTask = service.fetchRaidRankings()
-            let (tracker, rankings) = try await (trackerTask, rankingsTask)
-            events = tracker.raid.killFeedEvents(rankings: rankings)
+            let tracker = try await service.fetchTracker()
+            events = tracker.killFeedEvents()
             errorMessage = nil
         } catch {
             errorMessage = "Couldn't load the kill feed. Pull to try again."
