@@ -268,3 +268,33 @@ from here.
   as a real open question, not a solved one.
 - Bump `MARKETING_VERSION` (currently still `1.0`) and `CURRENT_PROJECT_VERSION` when this is
   actually ready to archive for the 2.0 build.
+
+## 2.0 in progress — Supporter IAP (remove ads + alternate icons)
+
+- A single non-consumable IAP, `RIO.RWF-FEED.supporter` ("Supporter"), implemented with
+  StoreKit 2 (`RWF FEED/SupporterStore.swift`) — no receipt-validation server, entitlement
+  state is read straight from `Transaction.currentEntitlements`, which StoreKit keeps synced
+  with Apple's servers (including cross-device restore for the same Apple ID).
+- Purchasing it hides `AdBannerBar` (`ContentView.swift`) and unlocks two alternate app icons
+  — "Horde" (red) and "Alliance" (blue) recolors of the existing crest icon, generated via a
+  hue-shift script from the original artwork, wired up through
+  `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` (no manual `Info.plist` editing needed —
+  Xcode 14+ generates `CFBundleIcons`/`CFBundleAlternateIcons` from that build setting). Icon
+  picker lives in the Settings "Supporter" section, switching via
+  `UIApplication.setAlternateIconName(_:)`.
+- `RWF FEED/Products.storekit` is a local StoreKit Configuration file for Simulator/Xcode
+  testing — **not yet wired to the scheme** (no shared `.xcscheme` file exists in this project
+  to edit programmatically). To test purchases locally in Xcode: Product → Scheme → Edit
+  Scheme → Run → Options → StoreKit Configuration → select `Products.storekit`. Verified
+  end-to-end in Simulator without a StoreKit config that the graceful "not available right
+  now" fallback works correctly when no product loads (rather than spinning forever).
+
+**Still needed before this can ship:**
+- Create the actual `RIO.RWF-FEED.supporter` In-App Purchase in App Store Connect (Features →
+  In-App Purchases) with real pricing/localization — only you can do this (account action).
+- Test the real purchase flow (Sandbox tester account) once the App Store Connect product
+  exists — StoreKit 2's `Product.purchase()` / `Transaction.updates` haven't been exercised
+  against a live product, only reasoned through against documented API behavior.
+- Consider whether "Remove Ads" and the alternate icons should ship as one bundled product
+  (current implementation) or split into separate purchases — bundled was the simpler and
+  cheaper-to-maintain choice made here, revisit if it tests poorly.
