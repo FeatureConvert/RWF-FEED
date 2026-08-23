@@ -36,9 +36,11 @@ final class TrackerViewModel: ObservableObject {
         if standings.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
-            let tracker = try await service.fetchTracker()
+            async let trackerTask = service.fetchTracker()
+            async let rankingsTask = service.fetchRaidRankings()
+            let (tracker, rankings) = try await (trackerTask, rankingsTask)
             raid = tracker.raid
-            standings = tracker.standings()
+            standings = tracker.raid.standings(rankings: rankings, liveGuildIDs: tracker.liveGuildIDs())
             errorMessage = nil
         } catch {
             errorMessage = "Couldn't load the tracker. Pull to try again."
