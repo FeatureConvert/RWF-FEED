@@ -2,9 +2,10 @@
 //  ComplicationEntryView.swift
 //  RWFFeedWatchWidget
 //
-//  Uses the app's purple accent (matching the main app's Theme.accent) via
-//  .widgetAccentable() so it shows real color on faces that support it, and falls back to
-//  the user's chosen accent tint on faces that don't.
+//  Uses the app's purple accent (matching the main app's Theme.accent) via plain
+//  .foregroundStyle rather than .widgetAccentable() — the latter opts content into the watch
+//  face's own tint system, which overrides it back to monochrome on faces that don't render
+//  complications in full color.
 //
 
 import WidgetKit
@@ -74,7 +75,6 @@ struct RectangularComplication: View {
             Text(boss?.bossName ?? "RWF Feed")
                 .font(.headline)
                 .foregroundStyle(rwfAccent)
-                .widgetAccentable()
                 .lineLimit(1)
 
             Gauge(value: killProgress(boss?.bestPercent)) {
@@ -116,7 +116,6 @@ struct CornerComplication: View {
         Text(percentText(boss?.bestPercent))
             .font(.system(size: 16, weight: .bold))
             .foregroundStyle(rwfAccent)
-            .widgetAccentable()
     }
 }
 
