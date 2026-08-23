@@ -21,7 +21,9 @@ enough to be worth the complexity) — it's an all-or-nothing category, same as
 
 - **Cron** (`* * * * *`, every minute): runs all three checks below.
 - **`checkForNewPosts`**: fetches the coverage feed, diffs against `lastSeenPostId` in
-  KV, and pushes anything newer to every `raiderioEnabled` device.
+  KV, and pushes anything newer to every `raiderioEnabled` device. Coverage posts
+  routinely announce kills in the first sentence, so `spoilerFreeEnabled` devices get a
+  generic body here too, not just on `checkWorldFirstKills` pushes.
 - **`checkRaiderIOEvents`**: fetches raid-race (boss names) and raid-rankings (live
   pull/defeat data) once, then runs both of the following against that shared data —
   they'd otherwise each need the same two fetches every minute:
@@ -56,8 +58,12 @@ enough to be worth the complexity) — it's an all-or-nothing category, same as
   the Worker's own reads).
 
 `/check` and `/test-push` require the `ADMIN_SECRET` Worker secret as a `secret` query
-param — without it they 401. `/register` has no such gate; it only ever touches the
-caller's own device token.
+param — without it they 401. `/register` has no such gate — it only ever touches the
+caller's own device token — but it does validate `deviceToken` (must match APNs' 64-hex-char
+shape) and caps total registered devices at `MAX_DEVICES` (200), returning 400/429
+respectively; `heartbreakThresholdPercent` is clamped to
+`[HEARTBREAK_MIN_THRESHOLD_PERCENT, HEARTBREAK_MAX_THRESHOLD_PERCENT]` (1–25) rather than
+accepted as any positive number.
 
 ## Redeploying after a code change
 

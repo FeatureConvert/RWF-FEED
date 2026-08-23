@@ -5,9 +5,11 @@
 //
 // Each registered device carries five independent preferences, set from Settings —
 // raiderioEnabled (new feed posts, "Major Heartbreaker" close calls, "World First!" kill
-// announcements), wowheadEnabled (new WoW news articles), spoilerFreeEnabled (redacts World
-// First kill pushes to a generic "Spoiler Alert" instead of naming the guild/boss; off by
-// default), heartbreakThresholdPercent (how close a pull has to be to push, default
+// announcements), wowheadEnabled (new WoW news articles), spoilerFreeEnabled (redacts both
+// World First kill pushes and new-post pushes to a generic body instead of naming/previewing
+// what happened — coverage posts routinely announce kills in the first sentence, so both had
+// to be covered or the feature didn't deliver what enabling it implies; off by default),
+// heartbreakThresholdPercent (how close a pull has to be to push, default
 // HEARTBREAK_DEFAULT_THRESHOLD_PERCENT), and notifyNonWorldFirstHeartbreaks (also push for a
 // guild's close call on a boss another guild already claimed, not just genuine title-race
 // close calls; off by default — matches the Heartbreak tab's own per-guild scope when on).
@@ -25,7 +27,10 @@
 // /check and /test-push require ADMIN_SECRET (a Worker secret, see README) as a `secret`
 // query param — without it, anyone who finds the URL could enumerate every registered
 // device token from /test-push's response, or spam real polls via /check. /register has no
-// such gate: it only ever adds/updates one device's own token, nothing to protect.
+// such gate — it only ever adds/updates one device's own token, nothing to protect — but it
+// does validate deviceToken's shape (APNs tokens are 64 hex chars) and cap total devices at
+// MAX_DEVICES, since an unauthenticated endpoint that accepted anything could otherwise be
+// looped to grow `devices` unboundedly.
 
 const FEED_SLUG = "the-venomous-abyss-global-coverage";
 const RAID_SLUG = "the-venomous-abyss";
@@ -34,9 +39,17 @@ const DEVICES_KEY = "devices";
 const LEGACY_TOKENS_KEY = "deviceTokens";
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
 const HEARTBREAK_DEFAULT_THRESHOLD_PERCENT = 5.01;
+const HEARTBREAK_MIN_THRESHOLD_PERCENT = 1;
+const HEARTBREAK_MAX_THRESHOLD_PERCENT = 25;
 const WORLD_FIRST_SEEN_KEY = "worldFirstKillsSeen";
 const WOWHEAD_NEWS_URL = "https://www.wowhead.com/news/rss/retail";
 const WOWHEAD_LAST_SEEN_KEY = "wowheadLastSeenPubDate";
+// APNs device tokens are exactly 32 bytes, hex-encoded.
+const DEVICE_TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
+// /register is deliberately unauthenticated (see below) — without some cap, anyone who finds
+// the URL (it's in the app binary) could grow `devices` unboundedly by POSTing junk tokens in
+// a loop, and every cron tick then attempts an APNs send per junk entry.
+const MAX_DEVICES = 200;
 
 export default {
   async scheduled(_event, env, ctx) {
@@ -48,16 +61,17 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/register") {
       const body = await request.json().catch(() => null);
-      if (!body || typeof body.deviceToken !== "string" || !body.deviceToken) {
-        return new Response("Missing deviceToken", { status: 400 });
+      if (!body || typeof body.deviceToken !== "string" || !DEVICE_TOKEN_PATTERN.test(body.deviceToken)) {
+        return new Response("Invalid deviceToken", { status: 400 });
       }
-      await addDevice(env, body.deviceToken, {
+      const added = await addDevice(env, body.deviceToken, {
         raiderioEnabled: body.raiderioEnabled,
         wowheadEnabled: body.wowheadEnabled,
         spoilerFreeEnabled: body.spoilerFreeEnabled,
         heartbreakThresholdPercent: body.heartbreakThresholdPercent,
         notifyNonWorldFirstHeartbreaks: body.notifyNonWorldFirstHeartbreaks,
       });
+      if (!added) return new Response("Too many registered devices", { status: 429 });
       return new Response("OK");
     }
 
@@ -138,9 +152,13 @@ async function checkForNewPosts(env) {
     const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
     for (const post of newPosts) {
       const title = "Venomous Abyss";
+      // Coverage posts routinely announce kills in the first sentence ("Method one-shots
+      // Mythic Ula'tek!") — spoilerFreeEnabled only redacted World First pushes until now,
+      // which meant a spoiler-free user got the kill spoiled here first anyway.
       const body = post.contentPreview || "New update";
+      const spoilerFreeBody = "New coverage update — open the app when you're ready to see it.";
       for (const device of devices) {
-        await sendPush(env, device.token, title, body, `post-${post.id}`);
+        await sendPush(env, device.token, title, device.spoilerFreeEnabled ? spoilerFreeBody : body, `post-${post.id}`);
       }
     }
   }
@@ -492,15 +510,16 @@ function normalizeDevice(d) {
       notifyNonWorldFirstHeartbreaks: false,
     };
   }
+  const threshold =
+    typeof d.heartbreakThresholdPercent === "number" && !Number.isNaN(d.heartbreakThresholdPercent)
+      ? Math.min(HEARTBREAK_MAX_THRESHOLD_PERCENT, Math.max(HEARTBREAK_MIN_THRESHOLD_PERCENT, d.heartbreakThresholdPercent))
+      : HEARTBREAK_DEFAULT_THRESHOLD_PERCENT;
   return {
     token: d.token,
     raiderioEnabled: d.raiderioEnabled !== false,
     wowheadEnabled: d.wowheadEnabled !== false,
     spoilerFreeEnabled: d.spoilerFreeEnabled === true,
-    heartbreakThresholdPercent:
-      typeof d.heartbreakThresholdPercent === "number" && d.heartbreakThresholdPercent > 0
-        ? d.heartbreakThresholdPercent
-        : HEARTBREAK_DEFAULT_THRESHOLD_PERCENT,
+    heartbreakThresholdPercent: threshold,
     notifyNonWorldFirstHeartbreaks: d.notifyNonWorldFirstHeartbreaks === true,
   };
 }
@@ -516,6 +535,9 @@ async function getDevices(env) {
   return JSON.parse(legacyRaw).map((token) => normalizeDevice(token));
 }
 
+/// Returns false (and writes nothing) if this would add a brand-new device past MAX_DEVICES —
+/// updating an already-registered device's preferences is always allowed, since that never
+/// grows the list.
 async function addDevice(env, token, prefs) {
   const devices = await getDevices(env);
   const normalized = normalizeDevice({ token, ...prefs });
@@ -523,9 +545,11 @@ async function addDevice(env, token, prefs) {
   if (existing >= 0) {
     devices[existing] = normalized;
   } else {
+    if (devices.length >= MAX_DEVICES) return false;
     devices.push(normalized);
   }
   await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
+  return true;
 }
 
 async function removeDevice(env, token) {
