@@ -32,6 +32,8 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            AdBannerBar()
+
             CustomTabBar(selection: $selectedTab)
         }
         .ignoresSafeArea(.keyboard)

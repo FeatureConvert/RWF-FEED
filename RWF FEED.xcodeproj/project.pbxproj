@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1AD5CCBF985FADFD4E509175 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4DC0184F5D6875A9EE1593BE /* GoogleMobileAds */; };
 		2E5BB0767CBEDA47DCA898D8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4AC416F02B6E09B87A86311 /* Foundation.framework */; };
 		36A3B8B2E755F9AF558D55C4 /* RWFFeedWidgetEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */; };
 		3A2A921019DD84C01FBC333D /* WatchContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AECB949A34106095408BC4 /* WatchContentView.swift */; };
@@ -122,10 +123,21 @@
 		E94B082E1472499040692FA7 /* RWFFeedWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RWFFeedWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		58B474A9A649CB9E028A4C16 /* Exceptions for "RWF FEED" folder in "RWF FEED" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Info-Ads.plist",
+			);
+			target = 9DF911F0303A41EC001688F0 /* RWF FEED */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9DF911F3303A41EC001688F0 /* RWF FEED */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				58B474A9A649CB9E028A4C16 /* Exceptions for "RWF FEED" folder in "RWF FEED" target */,
 			);
 			path = "RWF FEED";
 			sourceTree = "<group>";
@@ -147,6 +159,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1AD5CCBF985FADFD4E509175 /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -181,7 +194,6 @@
 				0A45C41158DB5931A5639E86 /* RWFFeedComplicationBundle.swift */,
 				985FA290B97B629075441880 /* Info.plist */,
 			);
-			name = RWFFeedWatchWidget;
 			path = RWFFeedWatchWidget;
 			sourceTree = "<group>";
 		};
@@ -205,7 +217,6 @@
 				2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */,
 				41F8DFD60407DF3638828304 /* Info.plist */,
 			);
-			name = RWFFeedWidget;
 			path = RWFFeedWidget;
 			sourceTree = "<group>";
 		};
@@ -227,7 +238,6 @@
 				E0FADB28DDB6D9C003B01D7B /* Info.plist */,
 				3E21DE1D5BB5654E18A7C8CB /* Assets.xcassets */,
 			);
-			name = RWFFeedWatch;
 			path = RWFFeedWatch;
 			sourceTree = "<group>";
 		};
@@ -260,7 +270,6 @@
 			children = (
 				8F1341E8B91172A51C41788B /* WatchBossData.swift */,
 			);
-			name = RWFWatchShared;
 			path = RWFWatchShared;
 			sourceTree = "<group>";
 		};
@@ -349,6 +358,9 @@
 				9DF911F3303A41EC001688F0 /* RWF FEED */,
 			);
 			name = "RWF FEED";
+			packageProductDependencies = (
+				4DC0184F5D6875A9EE1593BE /* GoogleMobileAds */,
+			);
 			productName = "RWF FEED";
 			productReference = 9DF911F1303A41EC001688F0 /* RWF FEED.app */;
 			productType = "com.apple.product-type.application";
@@ -389,6 +401,9 @@
 			);
 			mainGroup = 9DF911E8303A41EC001688F0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E0D6A0ED2A9844771C9C9C41 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9DF911F2303A41EC001688F0 /* Products */;
 			projectDirPath = "";
@@ -753,6 +768,7 @@
 				DEVELOPMENT_TEAM = 5X98G8X3FJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "RWF FEED/Info-Ads.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Azeroth Watch";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -788,6 +804,7 @@
 				DEVELOPMENT_TEAM = 5X98G8X3FJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "RWF FEED/Info-Ads.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Azeroth Watch";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -920,6 +937,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E0D6A0ED2A9844771C9C9C41 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4DC0184F5D6875A9EE1593BE /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E0D6A0ED2A9844771C9C9C41 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9DF911E9303A41EC001688F0 /* Project object */;
 }
