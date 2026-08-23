@@ -10,10 +10,8 @@ import Foundation
 import UIKit
 
 enum HTMLContent {
-    /// Converts HTML to an AttributedString with clickable links. `nonisolated` so callers can
-    /// genuinely run this off the main actor (NSAttributedString's HTML importer is WebKit-
-    /// backed and slow) — see FeedViewModel.parseNewBlocks.
-    nonisolated static func attributedString(from html: String) -> AttributedString {
+    /// Converts HTML to an AttributedString with clickable links, run off the main thread.
+    static func attributedString(from html: String) -> AttributedString {
         // Strip embeds we can't render inline (iframes, images). Leave real <br>/<div>/<p>
         // tags alone and let the HTML renderer do paragraph spacing itself — pre-converting
         // them to literal "\n" text backfires, since HTML collapses whitespace in text
@@ -66,16 +64,11 @@ enum HTMLContent {
 }
 
 extension String {
-    nonisolated func strippingHTMLTags() -> String {
+    func strippingHTMLTags() -> String {
         replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression)
-            // "&amp;" first so a double-escaped "&amp;lt;" normalizes to "&lt;" before the
-            // entities below run, same as a literal "&lt;" would.
             .replacingOccurrences(of: "&amp;", with: "&")
             .replacingOccurrences(of: "&#39;", with: "'")
             .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&lt;", with: "<")
-            .replacingOccurrences(of: "&gt;", with: ">")
-            .replacingOccurrences(of: "&nbsp;", with: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

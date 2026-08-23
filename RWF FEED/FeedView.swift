@@ -32,7 +32,7 @@ struct FeedView: View {
                         ScrollView {
                             LazyVStack(spacing: Theme.cardGap) {
                                 ForEach(viewModel.posts) { post in
-                                    FeedPostRow(post: post, blocks: viewModel.blocksByPostID[post.id] ?? [])
+                                    FeedPostRow(post: post)
                                 }
                             }
                             .padding(.horizontal, Theme.screenEdgeMargin)
@@ -102,10 +102,8 @@ struct ScreenHeader: View {
 
 struct FeedPostRow: View {
     let post: FeedPost
-    /// Parsed once by FeedViewModel and cached, not recomputed here — HTML parsing is real
-    /// work (NSAttributedString's HTML importer is WebKit-backed), and this view's `body` can
-    /// re-run every time the row scrolls back into view.
-    let blocks: [PostContentBlock]
+
+    private var blocks: [PostContentBlock] { PostContent.parseBlocks(from: post.content ?? "") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.cardRowGap) {
