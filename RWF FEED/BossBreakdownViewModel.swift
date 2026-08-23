@@ -38,8 +38,23 @@ final class BossBreakdownViewModel: ObservableObject {
         do {
             async let trackerTask = service.fetchTracker()
             async let rankingsTask = service.fetchRaidRankings()
-            let (tracker, rankings) = try await (trackerTask, rankingsTask)
-            summaries = tracker.raid.bossSummaries(rankings: rankings)
+            // Best-effort: a Hall of Fame fetch failure just means no VOD links this cycle,
+            // not a failed refresh — the boss list itself doesn't depend on it.
+            async let hallOfFameTask = (try? await service.fetchHallOfFame()) ?? []
+            let (tracker, rankings, hallOfFame) = try await (trackerTask, rankingsTask, hallOfFameTask)
+            let vodBySlug = Dictionary(
+                hallOfFame.compactMap { entry -> (String, URL)? in
+                    guard let slug = entry.boss?.slug, let url = entry.bossKillVideo?.first?.twitchURL else { return nil }
+                    return (slug, url)
+                },
+                uniquingKeysWith: { first, _ in first }
+            )
+            summaries = tracker.raid.bossSummaries(rankings: rankings).map { summary in
+                guard let worldFirst = summary.worldFirst, let vodURL = vodBySlug[summary.boss.slug] else { return summary }
+                var updated = worldFirst
+                updated.vodURL = vodURL
+                return BossSummary(boss: summary.boss, worldFirst: updated, bestPull: summary.bestPull)
+            }
             lastUpdated = Date()
             errorMessage = nil
         } catch {

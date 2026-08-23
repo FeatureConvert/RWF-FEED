@@ -230,12 +230,46 @@ struct EncounterPullEntry: Decodable {
     let isDefeated: Bool
 }
 
+// MARK: - Hall of fame (world-first kill VODs)
+
+struct HallOfFameResponse: Decodable {
+    let hallOfFame: HallOfFame
+}
+
+struct HallOfFame: Decodable {
+    let bossKills: [HallOfFameBossKill]
+}
+
+struct HallOfFameBossKill: Decodable {
+    let boss: Encounter?
+    let bossKillVideo: [BossKillVideo]?
+}
+
+struct BossKillVideo: Decodable {
+    let type: String
+    let id: String
+    let videoTimestampSeconds: Int
+
+    /// Only Twitch VODs are documented on this endpoint; nil for anything else so callers
+    /// don't have to know the URL scheme for a video type raider.io might add later.
+    var twitchURL: URL? {
+        guard type == "twitch" else { return nil }
+        let hours = videoTimestampSeconds / 3600
+        let minutes = (videoTimestampSeconds % 3600) / 60
+        let seconds = videoTimestampSeconds % 60
+        return URL(string: "https://www.twitch.tv/videos/\(id)?t=\(hours)h\(minutes)m\(seconds)s")
+    }
+}
+
 // MARK: - Derived per-boss summary (one row per boss, in raid order)
 
 struct BossSummary: Identifiable {
     struct WorldFirst {
         let guild: RaceGuild
         let at: Date
+        /// Deep-links to the moment of the kill, when raider.io's Hall of Fame has a VOD for
+        /// it — absent for older kills or when nobody was streaming.
+        var vodURL: URL? = nil
     }
     struct BestPull {
         let guild: RaceGuild

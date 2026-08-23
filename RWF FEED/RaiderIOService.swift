@@ -77,6 +77,23 @@ final class RaiderIOService {
         return decoded.raidRankings
     }
 
+    /// The documented `/raiding/hall-of-fame` endpoint — one entry per boss (in raid order,
+    /// including bosses nobody's killed yet, which come back with a nil `bossKillVideo`),
+    /// carrying Twitch VOD references for the moment of the world-first kill when one was
+    /// captured.
+    func fetchHallOfFame(region: String = "world", difficulty: String = "mythic") async throws -> [HallOfFameBossKill] {
+        var components = URLComponents(string: "https://raider.io/api/v1/raiding/hall-of-fame")!
+        components.queryItems = [
+            URLQueryItem(name: "raid", value: raidSlug),
+            URLQueryItem(name: "difficulty", value: difficulty),
+            URLQueryItem(name: "region", value: region),
+        ]
+        let (data, response) = try await session.data(from: components.url!)
+        try Self.validate(response)
+        let decoded = try decoder.decode(HallOfFameResponse.self, from: data)
+        return decoded.hallOfFame.bossKills
+    }
+
     private static func validate(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
             throw RaiderIOError.badResponse

@@ -90,6 +90,16 @@ struct BossSummaryRow: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(Theme.textSecondary)
                         }
+                        if let vodURL = worldFirst.vodURL {
+                            Link(destination: vodURL) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "play.circle.fill")
+                                    Text("Watch the Kill")
+                                }
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Theme.accentText)
+                            }
+                        }
                     } else if let bestPull = summary.bestPull {
                         Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) — \(bestPull.guild.displayName) (\(bestPull.pullCount) pulls)")
                             .font(.system(size: 12))
