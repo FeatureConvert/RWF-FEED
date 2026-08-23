@@ -10,38 +10,47 @@ Deployed at: `https://rwf-feed-push.rwf-feed.workers.dev`
 
 ## How it works
 
-Each registered device carries two independent flags — `raiderioEnabled` and
-`wowheadEnabled` — set from the toggles in Settings, filtering server-side (there's no
-way to veto a push client-side once APNs has delivered it while the app is closed).
-There's no per-guild filtering within `raiderioEnabled` (tried and removed; the
-favorited-guild push never fired reliably enough to be worth the complexity) — it's an
-all-or-nothing category, same as `wowheadEnabled`.
+Each registered device carries three independent flags — `raiderioEnabled`,
+`wowheadEnabled`, and `spoilerFreeEnabled` — set from the toggles in Settings,
+filtering/redacting server-side (there's no way to veto or rewrite a push client-side
+once APNs has delivered it while the app is closed). There's no per-guild filtering
+within `raiderioEnabled` (tried and removed; the favorited-guild push never fired
+reliably enough to be worth the complexity) — it's an all-or-nothing category, same as
+`wowheadEnabled`.
 
 - **Cron** (`* * * * *`, every minute): runs all three checks below.
 - **`checkForNewPosts`**: fetches the coverage feed, diffs against `lastSeenPostId` in
   KV, and pushes anything newer to every `raiderioEnabled` device.
-- **`checkHeartbreaks`**: "Major Heartbreaker" pushes — a guild pulling a not-yet-killed
-  boss under `HEARTBREAK_THRESHOLD_PERCENT` (5.01%) remaining health, sourced from
-  `raid-rankings`. Only on a new record close call per guild+boss — tracked in
-  `heartbreakBest` in KV — so a guild wiping repeatedly around the same percent doesn't
-  get pushed every minute. Only reaches `raiderioEnabled` devices.
+- **`checkRaiderIOEvents`**: fetches raid-race (boss names) and raid-rankings (live
+  pull/defeat data) once, then runs both of the following against that shared data —
+  they'd otherwise each need the same two fetches every minute:
+  - **`checkHeartbreaks`**: "Major Heartbreaker" pushes — a guild pulling a
+    globally-unclaimed boss (nobody has killed it yet, not just that guild) under
+    `HEARTBREAK_THRESHOLD_PERCENT` (5.01%) remaining health. Only on a new record close
+    call per guild+boss — tracked in `heartbreakBest` in KV — so a guild wiping
+    repeatedly around the same percent doesn't get pushed every minute.
+  - **`checkWorldFirstKills`**: "World First!" pushes — the first guild to defeat each
+    boss, tracked in `worldFirstKillsSeen` in KV so each boss only pushes once. For
+    `spoilerFreeEnabled` devices, the guild/boss are redacted to a generic "Spoiler
+    Alert" body instead of naming them.
+  - Both only reach `raiderioEnabled` devices.
 - **`checkWowheadNews`**: fetches Wowhead's public WoW-retail-only RSS feed
   (`wowhead.com/news/rss/retail` — excludes Diablo/other-game articles), diffs by
   `pubDate` against `wowheadLastSeenPubDate` in KV, and pushes new articles ("WoW News" /
   article title) to every `wowheadEnabled` device.
 - **`POST /register`**: the app calls this after `registerForRemoteNotifications()`
   succeeds, and again whenever a Settings toggle changes, with
-  `{ "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool }`. Upserts
-  by token — a device that re-registers gets its existing entry's flags updated, not a
-  duplicate. A `BadDeviceToken`/410 response from APNs on send removes the device
-  automatically (e.g. after a reinstall).
+  `{ "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool, "spoilerFreeEnabled": bool }`.
+  Upserts by token — a device that re-registers gets its existing entry's flags
+  updated, not a duplicate. A `BadDeviceToken`/410 response from APNs on send removes
+  the device automatically (e.g. after a reinstall).
 - **`GET /check?secret=<value>`**: manually triggers all three checks above. Returns
-  `{ posts, heartbreaks, wowheadNews }`.
+  `{ posts, raiderioEvents, wowheadNews }`.
 - **`GET /test-push?secret=<value>`**: sends a fixed test notification directly to every
-  registered device (ignoring both preference flags), bypassing all diffs entirely.
-  Useful for confirming delivery without needing a real new post/close-call/article, or
-  fighting KV's eventual consistency (writes can take up to ~60s to become visible to the
-  Worker's own reads).
+  registered device (ignoring all preference flags), bypassing all diffs entirely.
+  Useful for confirming delivery without needing a real new post/close-call/kill/article,
+  or fighting KV's eventual consistency (writes can take up to ~60s to become visible to
+  the Worker's own reads).
 
 `/check` and `/test-push` require the `ADMIN_SECRET` Worker secret as a `secret` query
 param — without it they 401. `/register` has no such gate; it only ever touches the

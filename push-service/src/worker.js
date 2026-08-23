@@ -3,14 +3,17 @@
 // the moment something new appears. This is what lets RWF FEED notify you even while the app
 // is fully closed — local notifications only fire while the app's own polling loop is running.
 //
-// Each registered device carries two independent preference flags — raiderioEnabled (new
-// feed posts, "Major Heartbreaker" close calls) and wowheadEnabled (new WoW news articles) —
-// set from the toggles in Settings. Filtering has to happen here rather than on-device: once
-// APNs has delivered a push while the app is closed, there's no client-side hook to veto it.
-// There's no per-guild filtering within raiderioEnabled (removed; it wasn't working reliably).
+// Each registered device carries three independent preference flags, set from the toggles in
+// Settings — raiderioEnabled (new feed posts, "Major Heartbreaker" close calls, "World
+// First!" kill announcements), wowheadEnabled (new WoW news articles), and spoilerFreeEnabled
+// (redacts World First kill pushes to a generic "Spoiler Alert" instead of naming the
+// guild/boss; off by default). Filtering/redaction has to happen here rather than on-device:
+// once APNs has delivered a push while the app is closed, there's no client-side hook to veto
+// or rewrite it. There's no per-guild filtering within raiderioEnabled (removed; it wasn't
+// working reliably).
 //
 // Endpoints:
-//   POST /register              { "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool }
+//   POST /register  { "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool, "spoilerFreeEnabled": bool }
 //   GET  /check?secret=<value>  — manually trigger a poll, for testing
 //   GET  /test-push?secret=<value> — send a placeholder push to every registered device
 //
@@ -26,12 +29,13 @@ const DEVICES_KEY = "devices";
 const LEGACY_TOKENS_KEY = "deviceTokens";
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
 const HEARTBREAK_THRESHOLD_PERCENT = 5.01;
+const WORLD_FIRST_SEEN_KEY = "worldFirstKillsSeen";
 const WOWHEAD_NEWS_URL = "https://www.wowhead.com/news/rss/retail";
 const WOWHEAD_LAST_SEEN_KEY = "wowheadLastSeenPubDate";
 
 export default {
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkHeartbreaks(env), checkWowheadNews(env)]));
+    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkRaiderIOEvents(env), checkWowheadNews(env)]));
   },
 
   async fetch(request, env) {
@@ -45,18 +49,19 @@ export default {
       await addDevice(env, body.deviceToken, {
         raiderioEnabled: body.raiderioEnabled,
         wowheadEnabled: body.wowheadEnabled,
+        spoilerFreeEnabled: body.spoilerFreeEnabled,
       });
       return new Response("OK");
     }
 
     if (request.method === "GET" && url.pathname === "/check") {
       if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
-      const [posts, heartbreaks, wowheadNews] = await Promise.all([
+      const [posts, raiderioEvents, wowheadNews] = await Promise.all([
         checkForNewPosts(env),
-        checkHeartbreaks(env),
+        checkRaiderIOEvents(env),
         checkWowheadNews(env),
       ]);
-      return new Response(JSON.stringify({ posts, heartbreaks, wowheadNews }), {
+      return new Response(JSON.stringify({ posts, raiderioEvents, wowheadNews }), {
         headers: { "content-type": "application/json" },
       });
     }
@@ -137,14 +142,10 @@ async function checkForNewPosts(env) {
   return { ok: true, newPosts: newPosts.length };
 }
 
-/// "Major Heartbreaker" pushes: a guild pulling a globally-unclaimed boss (nobody has killed
-/// it yet, not just this guild) down under HEARTBREAK_THRESHOLD_PERCENT remaining health —
-/// the same close-call signal as the app's Heartbreak tab, but pushed the moment it happens
-/// instead of requiring the tab to be open.
-///
-/// Only pushes on a new record (this guild's lowest-ever percent on this boss) so a guild
-/// stuck wiping around the same percent for an hour doesn't get a push every single minute.
-async function checkHeartbreaks(env) {
+/// Fetches raid-race (for boss names) and raid-rankings (for live pull/defeat data) once and
+/// runs both the heartbreak and world-first checks against it — they'd otherwise each need
+/// the same two fetches every minute.
+async function checkRaiderIOEvents(env) {
   const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
   if (devices.length === 0) return { ok: true, watchedDevices: 0 };
 
@@ -164,6 +165,22 @@ async function checkHeartbreaks(env) {
   const rankData = await rankResp.json();
   const rankings = rankData.raidRankings || [];
 
+  const [heartbreaks, worldFirsts] = await Promise.all([
+    checkHeartbreaks(env, rankings, encounterBySlug, devices),
+    checkWorldFirstKills(env, rankings, encounterBySlug, devices),
+  ]);
+
+  return { ok: true, watchedDevices: devices.length, heartbreaks, worldFirsts };
+}
+
+/// "Major Heartbreaker" pushes: a guild pulling a globally-unclaimed boss (nobody has killed
+/// it yet, not just this guild) down under HEARTBREAK_THRESHOLD_PERCENT remaining health —
+/// the same close-call signal as the app's Heartbreak tab, but pushed the moment it happens
+/// instead of requiring the tab to be open.
+///
+/// Only pushes on a new record (this guild's lowest-ever percent on this boss) so a guild
+/// stuck wiping around the same percent for an hour doesn't get a push every single minute.
+async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
   // A boss stops being a "close call" the moment any guild claims it, even for a guild that
   // personally hasn't killed it yet — the race for that boss is over.
   const claimedSlugs = new Set();
@@ -206,7 +223,51 @@ async function checkHeartbreaks(env) {
   }
 
   await env.PUSH_KV.put(HEARTBREAK_BEST_KEY, JSON.stringify(nextBest));
-  return { ok: true, watchedDevices: devices.length, pushCount };
+  return { pushCount };
+}
+
+/// "World First!" pushes — the first guild to defeat each boss, from the same
+/// encountersDefeated data checkHeartbreaks already builds claimedSlugs from. For devices
+/// with spoilerFreeEnabled set, the guild/boss are redacted to a generic "Spoiler Alert" so
+/// players avoiding spoilers still know something happened without seeing who/what.
+async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
+  const claimedNow = new Map();
+  for (const entry of rankings) {
+    for (const defeat of entry.encountersDefeated || []) {
+      const existing = claimedNow.get(defeat.slug);
+      if (!existing || new Date(defeat.firstDefeated) < new Date(existing.firstDefeated)) {
+        claimedNow.set(defeat.slug, { guildName: entry.guild.displayName, firstDefeated: defeat.firstDefeated });
+      }
+    }
+  }
+
+  const seenRaw = await env.PUSH_KV.get(WORLD_FIRST_SEEN_KEY);
+  const isFirstRun = seenRaw === null;
+  const seen = isFirstRun ? {} : JSON.parse(seenRaw);
+  const nextSeen = { ...seen };
+
+  let pushCount = 0;
+  for (const [slug, claim] of claimedNow) {
+    if (seen[slug]) continue;
+    nextSeen[slug] = true;
+    // First run ever: record the baseline (bosses already killed before this shipped)
+    // without pushing for every one of them at once.
+    if (isFirstRun) continue;
+
+    const bossName = encounterBySlug[slug]?.name ?? slug;
+    for (const device of devices) {
+      const spoilerFree = device.spoilerFreeEnabled === true;
+      const title = spoilerFree ? "Spoiler Alert" : "World First!";
+      const body = spoilerFree
+        ? "A boss has fallen for the first time. Open the app when you're ready to see who."
+        : `${claim.guildName} claims World First on ${bossName}!`;
+      await sendPush(env, device.token, title, body, `worldfirst-${slug}`);
+      pushCount++;
+    }
+  }
+
+  await env.PUSH_KV.put(WORLD_FIRST_SEEN_KEY, JSON.stringify(nextSeen));
+  return { pushCount };
 }
 
 /// New WoW news pushes — Wowhead's public "retail" RSS feed (WoW only, no Diablo/other-game
@@ -381,12 +442,13 @@ function base64urlBytes(bytes) {
 }
 
 // ---- Device storage ----
-// Array of { token, raiderioEnabled, wowheadEnabled }. Per-guild notification filtering (a
-// `guildIds` field per device) was tried and removed — it didn't work reliably; these two
-// flags are a much simpler binary per-category toggle, not guild-matching logic, so the same
-// concern doesn't really apply. getDevices normalizes away both older shapes (a plain token
-// string, or an object without the flags) by defaulting missing flags to true — so every
-// device that registered before this feature shipped keeps getting both categories.
+// Array of { token, raiderioEnabled, wowheadEnabled, spoilerFreeEnabled }. Per-guild
+// notification filtering (a `guildIds` field per device) was tried and removed — it didn't
+// work reliably; these are much simpler binary per-category toggles, not guild-matching
+// logic, so the same concern doesn't really apply. getDevices normalizes away older shapes (a
+// plain token string, or an object missing some flags) by defaulting raiderioEnabled/
+// wowheadEnabled to true and spoilerFreeEnabled to false — so a device that registered before
+// a given flag existed keeps its old behavior (both categories on, spoilers not redacted).
 //
 // addDevice/removeDevice are read-modify-write, not atomic: two calls racing (e.g. two
 // devices registering close together, or a register racing the cron's own removeDevice on a
@@ -402,11 +464,12 @@ async function getDevices(env) {
   if (raw) {
     return JSON.parse(raw).map((d) =>
       typeof d === "string"
-        ? { token: d, raiderioEnabled: true, wowheadEnabled: true }
+        ? { token: d, raiderioEnabled: true, wowheadEnabled: true, spoilerFreeEnabled: false }
         : {
             token: d.token,
             raiderioEnabled: d.raiderioEnabled !== false,
             wowheadEnabled: d.wowheadEnabled !== false,
+            spoilerFreeEnabled: d.spoilerFreeEnabled === true,
           }
     );
   }
@@ -415,18 +478,24 @@ async function getDevices(env) {
   // first re-registration migrates a device to the current key.
   const legacyRaw = await env.PUSH_KV.get(LEGACY_TOKENS_KEY);
   if (!legacyRaw) return [];
-  return JSON.parse(legacyRaw).map((token) => ({ token, raiderioEnabled: true, wowheadEnabled: true }));
+  return JSON.parse(legacyRaw).map((token) => ({
+    token,
+    raiderioEnabled: true,
+    wowheadEnabled: true,
+    spoilerFreeEnabled: false,
+  }));
 }
 
 async function addDevice(env, token, prefs) {
   const devices = await getDevices(env);
   const raiderioEnabled = prefs?.raiderioEnabled !== false;
   const wowheadEnabled = prefs?.wowheadEnabled !== false;
+  const spoilerFreeEnabled = prefs?.spoilerFreeEnabled === true;
   const existing = devices.findIndex((d) => d.token === token);
   if (existing >= 0) {
-    devices[existing] = { token, raiderioEnabled, wowheadEnabled };
+    devices[existing] = { token, raiderioEnabled, wowheadEnabled, spoilerFreeEnabled };
   } else {
-    devices.push({ token, raiderioEnabled, wowheadEnabled });
+    devices.push({ token, raiderioEnabled, wowheadEnabled, spoilerFreeEnabled });
   }
   await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
 }

@@ -199,21 +199,21 @@ extension RaidInfo {
             .map { boss in BossSummary(boss: boss, worldFirst: worldFirstBySlug[boss.slug], bestPull: bestPullBySlug[boss.slug]) }
     }
 
-    /// Every guild's best pull on a boss nobody has killed yet — globally unclaimed, not just
-    /// undefeated by that one guild — across the whole raid (not just each boss's single
-    /// frontrunner), sorted closest-to-a-kill first, and limited to genuinely close calls
-    /// (under `maxPercent` remaining health) rather than every pull on record. This is only
-    /// possible because raid-rankings carries live percent data for every encounter a guild
-    /// has attempted, not just their current one.
+    /// Every guild's best pull on a boss they personally haven't killed yet, across the whole
+    /// raid (not just each boss's single frontrunner) — sorted closest-to-a-kill first, and
+    /// limited to genuinely close calls (under `maxPercent` remaining health) rather than
+    /// every pull on record. Deliberately per-guild rather than globally-unclaimed-only: a
+    /// guild's own progress toward their first kill of a boss is still worth showing here even
+    /// after another guild has already claimed World First on it — only the push notification
+    /// (see push-service's checkHeartbreaks) is scoped down to genuine title-race close calls.
+    /// This is only possible because raid-rankings carries live percent data for every
+    /// encounter a guild has attempted, not just their current one.
     func closeCalls(rankings: [RaidRankingEntry], maxPercent: Double = 10) -> [CloseCall] {
         let encounterBySlug = Dictionary(uniqueKeysWithValues: encounters.map { ($0.slug, $0) })
-        // A boss stops being a "close call" the moment any guild claims it, even for a guild
-        // that personally hasn't killed it yet — the race for that boss is over.
-        let claimedSlugs = Set(rankings.flatMap { $0.encountersDefeated.map(\.slug) })
 
         var calls: [CloseCall] = []
         for entry in rankings {
-            for pull in entry.encountersPulled where !pull.isDefeated && !claimedSlugs.contains(pull.slug) {
+            for pull in entry.encountersPulled where !pull.isDefeated {
                 guard let percent = pull.bestPercent, percent < maxPercent,
                       let pullCount = pull.numPulls,
                       let boss = encounterBySlug[pull.slug] else { continue }

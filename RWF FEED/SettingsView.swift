@@ -46,11 +46,16 @@ struct SettingsView: View {
                             .foregroundStyle(Theme.textPrimary)
                     }
                     .tint(Theme.accent)
+                    Toggle(isOn: $notificationPreferences.spoilerFreeEnabled) {
+                        Label("Spoiler-Free Mode", systemImage: "eye.slash.fill")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
                 } header: {
                     Text("Notifications")
                         .foregroundStyle(Theme.textSecondary)
                 } footer: {
-                    Text("Raider.IO Updates covers new feed posts and Major Heartbreaker close-call alerts.")
+                    Text("Raider.IO Updates covers new feed posts and Major Heartbreaker close-call alerts. Spoiler-Free Mode hides which guild/boss in World First kill notifications — you'll still be alerted, just as \"Spoiler Alert\" instead.")
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .listRowBackground(Theme.cardSurface)

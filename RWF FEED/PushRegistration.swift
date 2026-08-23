@@ -17,6 +17,7 @@ enum PushRegistration {
         let deviceToken: String
         let raiderioEnabled: Bool
         let wowheadEnabled: Bool
+        let spoilerFreeEnabled: Bool
     }
 
     static func register(deviceToken: Data) {
@@ -40,7 +41,8 @@ enum PushRegistration {
         let payload = RegisterPayload(
             deviceToken: tokenHex,
             raiderioEnabled: NotificationPreferences.shared.raiderioEnabled,
-            wowheadEnabled: NotificationPreferences.shared.wowheadEnabled
+            wowheadEnabled: NotificationPreferences.shared.wowheadEnabled,
+            spoilerFreeEnabled: NotificationPreferences.shared.spoilerFreeEnabled
         )
         request.httpBody = try? JSONEncoder().encode(payload)
 
