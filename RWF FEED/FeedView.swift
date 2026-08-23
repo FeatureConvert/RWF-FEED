@@ -4,15 +4,18 @@
 //
 
 import SwiftUI
+import MessageUI
 
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
     @State private var showingNotificationSettings = false
+    @State private var showingMailCompose = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading) {
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, onFeedbackTapped: sendFeedback) {
                     showingNotificationSettings = true
                 }
 
@@ -56,6 +59,17 @@ struct FeedView: View {
         .sheet(isPresented: $showingNotificationSettings) {
             NotificationSettingsView()
         }
+        .sheet(isPresented: $showingMailCompose) {
+            MailComposeView()
+        }
+    }
+
+    private func sendFeedback() {
+        if MFMailComposeViewController.canSendMail() {
+            showingMailCompose = true
+        } else if let url = FeedbackMail.mailtoURL {
+            openURL(url)
+        }
     }
 }
 
@@ -65,6 +79,9 @@ struct ScreenHeader: View {
     let title: String
     var isLoading: Bool = false
     var lastUpdated: Date? = nil
+    /// Shows an envelope button that calls this when tapped — used on the Feed tab to send
+    /// bug/feature feedback. Omitted (nil) everywhere else.
+    var onFeedbackTapped: (() -> Void)? = nil
     /// Shows a bell button that calls this when tapped — used on the Feed tab to open
     /// notification settings. Omitted (nil) everywhere else.
     var onSettingsTapped: (() -> Void)? = nil
@@ -86,6 +103,12 @@ struct ScreenHeader: View {
             Spacer()
             if isLoading {
                 ProgressView()
+            }
+            if let onFeedbackTapped {
+                Button(action: onFeedbackTapped) {
+                    Image(systemName: "envelope")
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
             if let onSettingsTapped {
                 Button(action: onSettingsTapped) {
