@@ -7,40 +7,7 @@
 //
 
 import SwiftUI
-import UIKit
 import MessageUI
-import StoreKit
-
-private enum AppIconOption: String, CaseIterable, Identifiable {
-    case `default`, horde, alliance
-
-    var id: String { rawValue }
-
-    /// nil means the primary icon — UIApplication's own convention for "no alternate set".
-    var iconName: String? {
-        switch self {
-        case .default: return nil
-        case .horde: return "AppIcon-Horde"
-        case .alliance: return "AppIcon-Alliance"
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .default: return "Default"
-        case .horde: return "Horde"
-        case .alliance: return "Alliance"
-        }
-    }
-
-    static var current: AppIconOption {
-        switch UIApplication.shared.alternateIconName {
-        case AppIconOption.horde.iconName: return .horde
-        case AppIconOption.alliance.iconName: return .alliance
-        default: return .default
-        }
-    }
-}
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -48,9 +15,7 @@ struct SettingsView: View {
     @ObservedObject private var appearance = AppearanceSettings.shared
     @ObservedObject private var notificationPreferences = NotificationPreferences.shared
     @ObservedObject private var defaultTabSettings = DefaultTabSettings.shared
-    @ObservedObject private var supporterStore = SupporterStore.shared
     @State private var showingMailCompose = false
-    @State private var selectedIconOption = AppIconOption.current
     /// The slider's live value while dragging. Bound separately from
     /// notificationPreferences.heartbreakThresholdPercent, whose didSet fires a network POST —
     /// binding the slider straight to that would fire one POST per drag tick, and since
@@ -154,63 +119,6 @@ struct SettingsView: View {
                 .listRowBackground(Theme.cardSurface)
 
                 Section {
-                    if supporterStore.isSupporter {
-                        Label("You're a Supporter — thank you!", systemImage: "star.fill")
-                            .foregroundStyle(Theme.textPrimary)
-
-                        Picker("App Icon", selection: $selectedIconOption) {
-                            ForEach(AppIconOption.allCases) { option in
-                                Text(option.label).tag(option)
-                            }
-                        }
-                        .onChange(of: selectedIconOption) { _, newValue in
-                            setIcon(newValue)
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Remove ads and unlock alternate app icons with a one-time purchase.")
-                                .foregroundStyle(Theme.textPrimary)
-                            if let product = supporterStore.product {
-                                Button {
-                                    Task { await supporterStore.purchase() }
-                                } label: {
-                                    HStack {
-                                        Text("Become a Supporter")
-                                        Spacer()
-                                        Text(product.displayPrice)
-                                            .foregroundStyle(Theme.textSecondary)
-                                    }
-                                }
-                                .disabled(supporterStore.isLoading)
-                            } else if supporterStore.hasAttemptedProductLoad {
-                                Text("Not available right now — check your connection and try again later.")
-                                    .font(.footnote)
-                                    .foregroundStyle(Theme.textSecondary)
-                            } else {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                            }
-                        }
-                        .padding(.vertical, 2)
-
-                        Button("Restore Purchases") {
-                            Task { await supporterStore.restorePurchases() }
-                        }
-                        .disabled(supporterStore.isLoading)
-                    }
-
-                    if let error = supporterStore.errorMessage {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
-                } header: {
-                    Text("Supporter")
-                        .foregroundStyle(Theme.textSecondary)
-                }
-                .listRowBackground(Theme.cardSurface)
-
-                Section {
                     Button(action: sendFeedback) {
                         Label("Report a Bug / Feature Request", systemImage: "envelope")
                             .foregroundStyle(Theme.textPrimary)
@@ -284,12 +192,6 @@ struct SettingsView: View {
         .tint(Theme.accent)
         .sheet(isPresented: $showingMailCompose) {
             MailComposeView()
-        }
-    }
-
-    private func setIcon(_ option: AppIconOption) {
-        Task {
-            try? await UIApplication.shared.setAlternateIconName(option.iconName)
         }
     }
 

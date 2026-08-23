@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject private var supporterStore = SupporterStore.shared
     @State private var selectedTab: AppTab
     /// Each tab's view (and its @StateObject view model / polling task) is created the first
     /// time it's selected, then kept alive and just visually swapped after that — matching how
@@ -32,10 +31,6 @@ struct ContentView: View {
                 if visitedTabs.contains(.news) { tab(.news) { NewsView(isActive: selectedTab == .news) } }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if !supporterStore.isSupporter {
-                AdBannerBar()
-            }
 
             CustomTabBar(selection: $selectedTab)
         }

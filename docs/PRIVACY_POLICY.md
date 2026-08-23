@@ -16,18 +16,9 @@ based on the categories you enable in Settings. This token is not linked to your
 ID, email, or any other identity, is never shared with or sold to third parties, and is never
 used for advertising or cross-app tracking.
 
-**Advertising.** The app shows small banner ads served by Google AdMob to help cover the
-cost of running it. Ads are requested in non-personalized mode only — we do not request or
-use Apple's advertising identifier (IDFA), and Google does not use your activity in this app
-to personalize ads to you based on other apps or websites. Google's ad-serving process may
-still process technical data (such as your general location from IP address, device type, and
-ad interaction events) as described in
-[Google's Privacy Policy](https://policies.google.com/privacy) and
-[how Google uses information from sites or apps that use their services](https://policies.google.com/technologies/partner-sites).
-
 **Nothing else.** The app does not require or support account creation or sign-in. It does
-not collect your name, email, contacts, photos, or browsing history. Beyond the push token and
-ad-serving data described above, it does not use analytics SDKs or any other third-party
+not collect your name, email, location, contacts, photos, browsing history, or any other
+personal information. It does not use analytics SDKs, advertising SDKs, or any third-party
 tracking technology.
 
 ## Third-party content

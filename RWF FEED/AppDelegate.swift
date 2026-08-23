@@ -10,7 +10,6 @@
 
 import UIKit
 import UserNotifications
-import GoogleMobileAds
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(
@@ -18,7 +17,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
-        MobileAds.shared.start(completionHandler: nil)
         // Every AsyncImage in the app (boss icons, News thumbnails — guild logos have their
         // own in-memory cache, see GuildAvatar) shares URLCache.shared under the hood with no
         // retry on a failed load. The system default capacity is easily thrashed once dozens

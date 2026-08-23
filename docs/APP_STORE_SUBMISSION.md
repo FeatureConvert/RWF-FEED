@@ -231,70 +231,18 @@ from here.
   or resell their data, so this should be fine, but it's not a formal legal opinion — worth
   keeping in mind if the app ever adds monetization.
 
-## 2.0 in progress — Ads (AdMob)
+## 2.0 — ads and Supporter IAP tried, then pulled (reference only)
 
-1.0 was submitted 2026-08-23 (see above — that section is now historical). Work since then:
+1.0 was submitted 2026-08-23 (see above — that section is historical). Shortly after, an
+AdMob banner and a StoreKit 2 "Supporter" non-consumable IAP (remove ads + alternate app
+icons) were built, verified working in Simulator, and committed — then explicitly removed at
+the user's request before any of it shipped. The full implementation (Google Mobile Ads SDK
+integration, `SupporterStore.swift`, `BannerAdView.swift`, the Horde/Alliance alternate icon
+assets, the StoreKit Configuration file) is still in git history if this direction gets
+revisited:
+- `3251369` — Add AdMob banner ad, start on 2.0
+- `4742105` — Add Supporter IAP: remove ads + alternate app icons
 
-- Added the Google Mobile Ads SDK (`GoogleMobileAds`, v12.14.0, via SPM) to the main app
-  target only — not the watch or widget extensions.
-- A single small banner (`BannerAdView`/`AdBannerBar` in `RWF FEED/BannerAdView.swift`) sits
-  above the custom tab bar on every tab, via `ContentView.swift`.
-- Ads request **non-personalized only** (`npa=1` extra on every request) — deliberately, to
-  stay consistent with the Privacy Policy's existing "never used for tracking" stance and to
-  avoid needing an App Tracking Transparency prompt (non-personalized mode never touches IDFA).
-- `RWF FEED/Info-Ads.plist` merges `GADApplicationIdentifier` and a minimal `SKAdNetworkItems`
-  (Google's own network ID only) into the generated Info.plist via `INFOPLIST_FILE` alongside
-  `GENERATE_INFOPLIST_FILE = YES` — currently holds **Google's published test App ID**
-  (`ca-app-pub-3940256099942544~1458002511`); `BannerAdView` uses Google's matching **test ad
-  unit ID**. Verified working end-to-end in Simulator (real test creative renders).
-- `docs/PRIVACY_POLICY.md` updated with an Advertising section disclosing AdMob/non-personalized
-  ads and linking Google's privacy policy.
-
-**Still needed before this can ship as a real 2.0 release:**
-- Create a Google AdMob account and register the app to get a **real App ID and banner ad unit
-  ID** — swap both in (`Info-Ads.plist` and `BannerAdView.testAdUnitID`) before archiving.
-  AdMob account creation/payout setup is something only you can do (Google account + payment
-  details) — I can't do this step.
-- **App Privacy label update** in App Store Connect — adding an ad SDK almost always means
-  redeclaring data types (at minimum Identifiers/Usage Data used for "Third-Party
-  Advertising" or "Analytics", depending on what AdMob's SDK actually collects even in NPA
-  mode) — needs redoing before the 2.0 build is submitted, separate from what's already live
-  for 1.0.
-- **EU/UK consent (UMP)** — Google's Mobile Ads SDK pulled in `GoogleUserMessagingPlatform`
-  automatically as a dependency, but no consent flow is wired up yet. Google's EU User Consent
-  Policy generally expects a consent mechanism (their own UMP SDK, or an equivalent CMP) for
-  users in the EEA/UK even for non-personalized ads — worth resolving before shipping to those
-  regions rather than assuming NPA alone is sufficient. Not yet researched in depth; flagging
-  as a real open question, not a solved one.
-- Bump `MARKETING_VERSION` (currently still `1.0`) and `CURRENT_PROJECT_VERSION` when this is
-  actually ready to archive for the 2.0 build.
-
-## 2.0 in progress — Supporter IAP (remove ads + alternate icons)
-
-- A single non-consumable IAP, `RIO.RWF-FEED.supporter` ("Supporter"), implemented with
-  StoreKit 2 (`RWF FEED/SupporterStore.swift`) — no receipt-validation server, entitlement
-  state is read straight from `Transaction.currentEntitlements`, which StoreKit keeps synced
-  with Apple's servers (including cross-device restore for the same Apple ID).
-- Purchasing it hides `AdBannerBar` (`ContentView.swift`) and unlocks two alternate app icons
-  — "Horde" (red) and "Alliance" (blue) recolors of the existing crest icon, generated via a
-  hue-shift script from the original artwork, wired up through
-  `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` (no manual `Info.plist` editing needed —
-  Xcode 14+ generates `CFBundleIcons`/`CFBundleAlternateIcons` from that build setting). Icon
-  picker lives in the Settings "Supporter" section, switching via
-  `UIApplication.setAlternateIconName(_:)`.
-- `RWF FEED/Products.storekit` is a local StoreKit Configuration file for Simulator/Xcode
-  testing — **not yet wired to the scheme** (no shared `.xcscheme` file exists in this project
-  to edit programmatically). To test purchases locally in Xcode: Product → Scheme → Edit
-  Scheme → Run → Options → StoreKit Configuration → select `Products.storekit`. Verified
-  end-to-end in Simulator without a StoreKit config that the graceful "not available right
-  now" fallback works correctly when no product loads (rather than spinning forever).
-
-**Still needed before this can ship:**
-- Create the actual `RIO.RWF-FEED.supporter` In-App Purchase in App Store Connect (Features →
-  In-App Purchases) with real pricing/localization — only you can do this (account action).
-- Test the real purchase flow (Sandbox tester account) once the App Store Connect product
-  exists — StoreKit 2's `Product.purchase()` / `Transaction.updates` haven't been exercised
-  against a live product, only reasoned through against documented API behavior.
-- Consider whether "Remove Ads" and the alternate icons should ship as one bundled product
-  (current implementation) or split into separate purchases — bundled was the simpler and
-  cheaper-to-maintain choice made here, revisit if it tests poorly.
+Nothing from either commit is in the working tree anymore. The Privacy Policy's Advertising
+section was reverted along with it, so it currently matches what was actually submitted for
+1.0 (no ads, no IAP).
