@@ -125,6 +125,17 @@ struct RaceGuild: Decodable, Identifiable, Equatable {
     static func == (lhs: RaceGuild, rhs: RaceGuild) -> Bool {
         lhs.id == rhs.id
     }
+
+    /// raid-race's `logo` field is stale/broken for some guilds (still points at an old
+    /// per-raid asset path that 403s) even when raid-rankings has a working one for the same
+    /// guild — see RaiderIOService's standings()/killFeedEvents() callers, which cross-
+    /// reference raid-rankings to correct this.
+    func withLogo(_ logo: String) -> RaceGuild {
+        RaceGuild(
+            id: id, name: name, displayName: displayName, faction: faction, realm: realm,
+            region: region, path: path, logo: logo, color: color
+        )
+    }
 }
 
 struct RealmRef: Decodable {

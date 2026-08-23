@@ -67,11 +67,6 @@ struct GuildAvatar: View {
         guard let url = URL(string: guild.logo) else { return }
         var request = URLRequest(url: url)
         request.setValue("image/png,image/jpeg,image/*;q=0.8", forHTTPHeaderField: "Accept")
-        // These logos are served with a 1-year Cache-Control, and URLCache doesn't reliably
-        // key on Vary: Accept — a WebP response cached under this URL before this Accept
-        // header existed would otherwise keep being served forever regardless of what header
-        // this request sends now. Bypass the read; the fresh (correctly-negotiated) response
-        // still gets written back to the cache for next time.
         request.cachePolicy = .reloadIgnoringLocalCacheData
         if let (data, _) = try? await URLSession.shared.data(for: request), let image = UIImage(data: data) {
             uiImage = image

@@ -37,9 +37,23 @@ final class TrackerViewModel: ObservableObject {
         if standings.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
-            let tracker = try await service.fetchTracker()
+            async let trackerTask = service.fetchTracker()
+            // raid-race's guild.logo is stale/broken for some guilds even when raid-rankings
+            // has a working one for the same guild (confirmed via device logs — a 403 from an
+            // old per-raid asset path raid-race still references). Best-effort: a rankings
+            // fetch failure just means no logo correction this cycle, not a failed refresh.
+            async let rankingsTask = (try? await service.fetchRaidRankings()) ?? []
+            let tracker = try await trackerTask
+            let rankings = await rankingsTask
             raid = tracker.raid
-            standings = tracker.standings()
+            let logoByGuildId = Dictionary(rankings.map { ($0.guild.id, $0.guild.logo) }, uniquingKeysWith: { first, _ in first })
+            standings = tracker.standings().map { standing in
+                guard let logo = logoByGuildId[standing.guild.id] else { return standing }
+                return GuildStanding(
+                    guild: standing.guild.withLogo(logo), bossesDown: standing.bossesDown,
+                    lastKillAt: standing.lastKillAt, isLive: standing.isLive
+                )
+            }
             lastUpdated = Date()
             errorMessage = nil
         } catch {
