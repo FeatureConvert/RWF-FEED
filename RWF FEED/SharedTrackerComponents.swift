@@ -10,6 +10,12 @@ import SwiftUI
 
 struct GuildAvatar: View {
     let guild: RaceGuild
+    /// AsyncImage never retries a failed load on its own — bumping this and keying `.id()` to
+    /// it forces a fresh attempt. Guild logos are fetched from raider.io's CDN, which is
+    /// reliable in practice, but a transient blip otherwise permanently shows the initials
+    /// fallback for that guild until something else causes this view to be recreated.
+    @State private var retryToken = 0
+    private static let maxRetries = 2
 
     private static let palette: [(background: Color, foreground: Color)] = [
         (Color(hex: "#5D5294"), .white),
@@ -41,8 +47,15 @@ struct GuildAvatar: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(colors.foreground)
                 }
+                .task(id: phase.error?.localizedDescription) {
+                    guard phase.error != nil, retryToken < Self.maxRetries else { return }
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    guard !Task.isCancelled else { return }
+                    retryToken += 1
+                }
             }
         }
+        .id(retryToken)
         .frame(width: Theme.guildLogoDiameter, height: Theme.guildLogoDiameter)
         .clipShape(Circle())
     }

@@ -17,6 +17,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // Every AsyncImage in the app (guild logos, boss icons, News thumbnails) shares
+        // URLCache.shared under the hood with no retry on a failed load. The system default
+        // capacity is easily thrashed once dozens of unique guild logos are being polled
+        // across 5+ tabs every 30-60s, and a cache-eviction-driven miss just permanently shows
+        // the fallback (initials avatar / blank thumbnail) for that render — a bigger,
+        // dedicated cache makes that far less likely without touching any view code.
+        URLCache.shared = URLCache(memoryCapacity: 50 * 1024 * 1024, diskCapacity: 200 * 1024 * 1024)
         return true
     }
 
