@@ -7,11 +7,14 @@ import SwiftUI
 
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
+    @State private var showingNotificationSettings = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading)
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading) {
+                    showingNotificationSettings = true
+                }
 
                 Group {
                     if viewModel.posts.isEmpty && viewModel.isLoading {
@@ -50,6 +53,9 @@ struct FeedView: View {
         .onDisappear {
             viewModel.stopPolling()
         }
+        .sheet(isPresented: $showingNotificationSettings) {
+            NotificationSettingsView()
+        }
     }
 }
 
@@ -59,6 +65,9 @@ struct ScreenHeader: View {
     let title: String
     var isLoading: Bool = false
     var lastUpdated: Date? = nil
+    /// Shows a bell button that calls this when tapped — used on the Feed tab to open
+    /// notification settings. Omitted (nil) everywhere else.
+    var onSettingsTapped: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -77,6 +86,12 @@ struct ScreenHeader: View {
             Spacer()
             if isLoading {
                 ProgressView()
+            }
+            if let onSettingsTapped {
+                Button(action: onSettingsTapped) {
+                    Image(systemName: "bell")
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
         }
         .padding(.top, 8)

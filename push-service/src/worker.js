@@ -3,18 +3,25 @@
 // appears. This is what lets RWF FEED notify you even while the app is fully closed —
 // local notifications only fire while the app's own polling loop is running.
 //
+// Each device picks a notification mode: `guildId: null` gets every global feed post
+// (the original behavior); `guildId: <id>` instead gets a push only when that specific
+// guild's boss count increases, sourced independently from the raid-race timeline so it
+// doesn't depend on the editorial feed ever posting about that guild.
+//
 // Endpoints:
-//   POST /register   { "deviceToken": "<hex>" }  — called by the app after it registers
-//                                                   for remote notifications
+//   POST /register   { "deviceToken": "<hex>", "guildId": <number|null> }
 //   GET  /check                                   — manually trigger a poll, for testing
 
 const FEED_SLUG = "the-venomous-abyss-global-coverage";
+const RAID_SLUG = "the-venomous-abyss";
 const LAST_SEEN_KEY = "lastSeenPostId";
-const TOKENS_KEY = "deviceTokens";
+const DEVICES_KEY = "devices";
+const LEGACY_TOKENS_KEY = "deviceTokens";
+const GUILD_PROGRESS_KEY = "guildProgress";
 
 export default {
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(checkForNewPosts(env));
+    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkGuildKills(env)]));
   },
 
   async fetch(request, env) {
@@ -25,31 +32,32 @@ export default {
       if (!body || typeof body.deviceToken !== "string" || !body.deviceToken) {
         return new Response("Missing deviceToken", { status: 400 });
       }
-      await addToken(env, body.deviceToken);
+      const guildId = typeof body.guildId === "number" ? body.guildId : null;
+      await upsertDevice(env, body.deviceToken, guildId);
       return new Response("OK");
     }
 
     if (request.method === "GET" && url.pathname === "/check") {
-      const result = await checkForNewPosts(env);
-      return new Response(JSON.stringify(result), {
+      const [posts, kills] = await Promise.all([checkForNewPosts(env), checkGuildKills(env)]);
+      return new Response(JSON.stringify({ posts, kills }), {
         headers: { "content-type": "application/json" },
       });
     }
 
     if (request.method === "GET" && url.pathname === "/test-push") {
-      const tokens = await getTokens(env);
+      const devices = await getDevices(env);
       const results = [];
-      for (const token of tokens) {
+      for (const device of devices) {
         const result = await sendPush(
           env,
-          token,
+          device.token,
           "Test push",
           "If you see this, push delivery works.",
           `test-${Date.now()}`
         );
-        results.push({ token, ...result });
+        results.push({ token: device.token, guildId: device.guildId, ...result });
       }
-      return new Response(JSON.stringify({ tokenCount: tokens.length, results }, null, 2), {
+      return new Response(JSON.stringify({ deviceCount: devices.length, results }, null, 2), {
         headers: { "content-type": "application/json" },
       });
     }
@@ -87,18 +95,82 @@ async function checkForNewPosts(env) {
     .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
 
   if (newPosts.length > 0) {
-    const tokens = await getTokens(env);
+    const devices = (await getDevices(env)).filter((d) => d.guildId === null);
     for (const post of newPosts) {
       const title = "Venomous Abyss";
       const body = post.contentPreview || "New update";
-      for (const token of tokens) {
-        await sendPush(env, token, title, body, `post-${post.id}`);
+      for (const device of devices) {
+        await sendPush(env, device.token, title, body, `post-${post.id}`);
       }
     }
   }
 
   await env.PUSH_KV.put(LAST_SEEN_KEY, String(maxId));
   return { ok: true, newPosts: newPosts.length };
+}
+
+/// Pushes to devices that picked a specific favorite guild the moment that guild's boss
+/// count increases — independent of the editorial feed, which might lag behind or never
+/// mention a given guild's kill at all.
+async function checkGuildKills(env) {
+  const devices = (await getDevices(env)).filter((d) => d.guildId !== null);
+  if (devices.length === 0) return { ok: true, watchedDevices: 0 };
+
+  const resp = await fetch(
+    `https://raider.io/api/raids/raid-race?raid=${RAID_SLUG}&region=world&difficulty=mythic`
+  );
+  if (!resp.ok) return { ok: false, status: resp.status };
+  const data = await resp.json();
+  const tracker = data.worldFirstTracker || {};
+  const timeline = tracker.timelines?.[0]?.timeline || [];
+  const encounters = [...(tracker.raid?.encounters || [])].sort((a, b) => a.ordinal - b.ordinal);
+
+  const bestProgress = {};
+  for (const step of timeline) {
+    for (const kill of step.guilds) {
+      const gid = String(kill.guild.id);
+      if (!bestProgress[gid] || step.progress > bestProgress[gid].progress) {
+        bestProgress[gid] = { progress: step.progress, guildName: kill.guild.displayName };
+      }
+    }
+  }
+
+  const previousRaw = await env.PUSH_KV.get(GUILD_PROGRESS_KEY);
+  const nextProgress = {};
+  for (const [gid, current] of Object.entries(bestProgress)) {
+    nextProgress[gid] = current.progress;
+  }
+
+  if (previousRaw === null) {
+    // First run ever: record the baseline so every already-in-progress guild doesn't look
+    // like a fresh kill the moment someone favorites them.
+    await env.PUSH_KV.put(GUILD_PROGRESS_KEY, JSON.stringify(nextProgress));
+    return { ok: true, watchedDevices: devices.length, baseline: true };
+  }
+
+  const previous = JSON.parse(previousRaw);
+  let pushCount = 0;
+  for (const [gid, current] of Object.entries(bestProgress)) {
+    const prevProgress = previous[gid] ?? 0;
+    if (current.progress <= prevProgress) continue;
+
+    const boss = encounters[current.progress - 1];
+    const bossName = boss ? boss.name : `boss ${current.progress}`;
+    const watchers = devices.filter((d) => String(d.guildId) === gid);
+    for (const device of watchers) {
+      await sendPush(
+        env,
+        device.token,
+        current.guildName,
+        `Killed ${bossName}! (${current.progress}/${encounters.length})`,
+        `guild-${gid}-${current.progress}`
+      );
+      pushCount++;
+    }
+  }
+
+  await env.PUSH_KV.put(GUILD_PROGRESS_KEY, JSON.stringify(nextProgress));
+  return { ok: true, watchedDevices: devices.length, pushCount };
 }
 
 // ---- APNs ----
@@ -129,7 +201,7 @@ async function sendPush(env, deviceToken, title, body, collapseId) {
   const text = await res.text();
   console.log("APNs error", deviceToken, res.status, text);
   if (res.status === 410 || text.includes("BadDeviceToken")) {
-    await removeToken(env, deviceToken);
+    await removeDevice(env, deviceToken);
   }
   return { status: res.status, error: text };
 }
@@ -173,22 +245,32 @@ function base64urlBytes(bytes) {
   return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-// ---- Device token storage ----
+// ---- Device storage ----
+// { token: "<hex>", guildId: number | null } — guildId null means "all feed posts".
 
-async function getTokens(env) {
-  const raw = await env.PUSH_KV.get(TOKENS_KEY);
-  return raw ? JSON.parse(raw) : [];
+async function getDevices(env) {
+  const raw = await env.PUSH_KV.get(DEVICES_KEY);
+  if (raw) return JSON.parse(raw);
+
+  // Fall back to the flat token-array format used before per-guild notifications existed.
+  // Never written again — the first re-registration migrates a device to the new key.
+  const legacyRaw = await env.PUSH_KV.get(LEGACY_TOKENS_KEY);
+  if (!legacyRaw) return [];
+  return JSON.parse(legacyRaw).map((token) => ({ token, guildId: null }));
 }
 
-async function addToken(env, token) {
-  const tokens = await getTokens(env);
-  if (!tokens.includes(token)) {
-    tokens.push(token);
-    await env.PUSH_KV.put(TOKENS_KEY, JSON.stringify(tokens));
+async function upsertDevice(env, token, guildId) {
+  const devices = await getDevices(env);
+  const existing = devices.find((d) => d.token === token);
+  if (existing) {
+    existing.guildId = guildId;
+  } else {
+    devices.push({ token, guildId });
   }
+  await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
 }
 
-async function removeToken(env, token) {
-  const tokens = (await getTokens(env)).filter((t) => t !== token);
-  await env.PUSH_KV.put(TOKENS_KEY, JSON.stringify(tokens));
+async function removeDevice(env, token) {
+  const devices = (await getDevices(env)).filter((d) => d.token !== token);
+  await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
 }
