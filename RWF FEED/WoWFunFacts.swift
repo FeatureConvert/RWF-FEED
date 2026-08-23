@@ -23,6 +23,7 @@ enum WoWFunFacts {
         "Blizzard doesn't run an official \"Race to World First\" — it's entirely community-organized and tracked by sites like raider.io.",
         "Pandaren became a playable race in Mists of Pandaria, alongside the Monk class.",
         "The Burning Crusade, WoW's first expansion, raised the level cap from 60 to 70.",
+        "Nexrax met Pakhete through WoW in 2021, later traveled halfway across the country to meet in person, and they were married in 2025.",
     ]
 
     static func random() -> String {
