@@ -8,16 +8,13 @@ import MessageUI
 
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
-    @State private var showingNotificationSettings = false
     @State private var showingMailCompose = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, onFeedbackTapped: sendFeedback) {
-                    showingNotificationSettings = true
-                }
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, onFeedbackTapped: sendFeedback)
 
                 Group {
                     if viewModel.posts.isEmpty && viewModel.isLoading {
@@ -56,9 +53,6 @@ struct FeedView: View {
         .onDisappear {
             viewModel.stopPolling()
         }
-        .sheet(isPresented: $showingNotificationSettings) {
-            NotificationSettingsView()
-        }
         .sheet(isPresented: $showingMailCompose) {
             MailComposeView()
         }
@@ -82,9 +76,6 @@ struct ScreenHeader: View {
     /// Shows an envelope button that calls this when tapped — used on the Feed tab to send
     /// bug/feature feedback. Omitted (nil) everywhere else.
     var onFeedbackTapped: (() -> Void)? = nil
-    /// Shows a bell button that calls this when tapped — used on the Feed tab to open
-    /// notification settings. Omitted (nil) everywhere else.
-    var onSettingsTapped: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -107,12 +98,6 @@ struct ScreenHeader: View {
             if let onFeedbackTapped {
                 Button(action: onFeedbackTapped) {
                     Image(systemName: "envelope")
-                        .foregroundStyle(Theme.textSecondary)
-                }
-            }
-            if let onSettingsTapped {
-                Button(action: onSettingsTapped) {
-                    Image(systemName: "bell")
                         .foregroundStyle(Theme.textSecondary)
                 }
             }

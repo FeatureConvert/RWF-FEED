@@ -10,35 +10,27 @@ Deployed at: `https://rwf-feed-push.rwf-feed.workers.dev`
 
 ## How it works
 
-Each device registers with a list of favorite guild IDs (`guildIds`). An empty list is
-the default: a push for every new post in the global coverage feed. A non-empty list
-switches that device to guild-specific mode: a push only when one of those guilds' boss
-count goes up, independent of whether the editorial feed ever mentions that guild.
+Every registered device gets every push — there's no per-device filtering. (Per-guild
+notification preferences were tried and removed; the favorited-guild push never fired
+reliably enough to be worth the complexity.)
 
-- **Cron** (`* * * * *`, every minute): runs all three checks below.
+- **Cron** (`* * * * *`, every minute): runs both checks below.
 - **`checkForNewPosts`**: fetches the coverage feed, diffs against `lastSeenPostId` in
-  KV, and pushes anything newer to every device with an empty `guildIds` list.
-- **`checkGuildKills`**: fetches `raid-rankings` (not the raid-race timeline — see the
-  comment at the top of `worker.js` for why: the timeline caps each progress step to a
-  handful of guilds, which would silently drop most favorited guilds), diffs each
-  tracked guild's boss count against `guildProgress` in KV, and pushes devices that
-  favorited a guild whose count just went up.
+  KV, and pushes anything newer to every registered device.
 - **`checkHeartbreaks`**: "Major Heartbreaker" pushes — a guild pulling a not-yet-killed
-  boss under `HEARTBREAK_THRESHOLD_PERCENT` (5.01%) remaining health. Goes to the same
-  "all feed posts" devices as `checkForNewPosts` (a near-miss is race news regardless of
-  favorited guild), and only on a new record close call per guild+boss — tracked in
+  boss under `HEARTBREAK_THRESHOLD_PERCENT` (5.01%) remaining health, sourced from
+  `raid-rankings`. Only on a new record close call per guild+boss — tracked in
   `heartbreakBest` in KV — so a guild wiping repeatedly around the same percent doesn't
   get pushed every minute.
 - **`POST /register`**: the app calls this after `registerForRemoteNotifications()`
-  succeeds (and again whenever the user changes their notification preferences), with
-  `{ "deviceToken": "<hex>", "guildIds": [<number>, ...] }`. A `BadDeviceToken`/410
-  response from APNs on send removes the device automatically (e.g. after a reinstall).
-- **`GET /check?secret=<value>`**: manually triggers all three checks above. Returns
-  `{ posts, kills, heartbreaks }`.
+  succeeds, with `{ "deviceToken": "<hex>" }`. A `BadDeviceToken`/410 response from APNs
+  on send removes the device automatically (e.g. after a reinstall).
+- **`GET /check?secret=<value>`**: manually triggers both checks above. Returns
+  `{ posts, heartbreaks }`.
 - **`GET /test-push?secret=<value>`**: sends a fixed test notification directly to every
   registered device, bypassing both diffs entirely. Useful for confirming delivery
-  without needing a real new post/kill or fighting KV's eventual consistency (writes can
-  take up to ~60s to become visible to the Worker's own reads).
+  without needing a real new post/close-call or fighting KV's eventual consistency
+  (writes can take up to ~60s to become visible to the Worker's own reads).
 
 `/check` and `/test-push` require the `ADMIN_SECRET` Worker secret as a `secret` query
 param — without it they 401. `/register` has no such gate; it only ever touches the
@@ -83,21 +75,19 @@ old one stops working immediately.
 Binding `PUSH_KV`, id `e8207fa029d447c1a5e574a43bffef07` (see `wrangler.toml`). Holds:
 
 - `lastSeenPostId` — integer, the highest feed post ID seen so far.
-- `guildProgress` — JSON object, `{ [guildId]: bossesDown }` as of the last cron tick.
 - `heartbreakBest` — JSON object, `{ "guildId-bossSlug": lowestPercentSeen }` — the record
   close call already pushed for each guild+boss pair, so only a new record re-pushes.
-- `devices` — JSON array of `{ token, guildIds }`. Also accepts (read-only) two older
-  shapes for devices that haven't re-registered since a schema change: `{ token,
-  guildId: number | null }` (pre-multi-select), normalized on read in `getDevices`.
-- `deviceTokens` — the original flat array of token strings, from before any
-  notification preferences existed. Only read as a last-resort fallback if `devices`
-  doesn't exist yet; never written to anymore.
+- `devices` — JSON array of hex token strings. Also accepts (read-only) older per-guild
+  shapes left over from the removed notification-filtering feature — `getDevices`
+  normalizes any `{ token, guildIds }`/`{ token, guildId }` entries down to plain tokens.
+- `deviceTokens` — the original key name, from before `devices` existed. Only read as a
+  last-resort fallback if `devices` doesn't exist yet; never written to anymore.
 
 ```bash
 # Inspect current state
 npx wrangler kv key get "lastSeenPostId" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
 npx wrangler kv key get "devices" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
-npx wrangler kv key get "guildProgress" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
+npx wrangler kv key get "heartbreakBest" --namespace-id e8207fa029d447c1a5e574a43bffef07 --remote
 ```
 
 ## Account
