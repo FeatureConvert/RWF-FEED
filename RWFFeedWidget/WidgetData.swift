@@ -49,7 +49,7 @@ private struct EncounterPullEntry: Decodable {
     let isDefeated: Bool
 }
 
-struct WidgetBossState {
+struct WidgetBossState: Codable {
     let bossName: String
     let bossOrdinal: Int
     let totalBosses: Int
@@ -69,15 +69,24 @@ struct WidgetBossState {
 
 enum RWFWidgetData {
     private static let raidSlug = "the-venomous-abyss"
+    /// Scoped to this extension's own sandboxed UserDefaults — no App Group needed, since
+    /// this only needs to survive across this widget's own process invocations, not be
+    /// shared with the main app.
+    private static let cacheKey = "RWFWidgetData.lastKnownBossState"
 
     private static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
+        // raid-race's dates come back with fractional seconds; raid-rankings' don't — accept
+        // both rather than only the format whichever field happened to be tested against.
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoNoFraction = ISO8601DateFormatter()
+        isoNoFraction.formatOptions = [.withInternetDateTime]
         decoder.dateDecodingStrategy = .custom { decoderInner in
             let container = try decoderInner.singleValueContainer()
             let string = try container.decode(String.self)
             if let date = iso.date(from: string) { return date }
+            if let date = isoNoFraction.date(from: string) { return date }
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unrecognized date: \(string)")
         }
         return decoder
@@ -85,8 +94,9 @@ enum RWFWidgetData {
 
     /// The furthest-progressed boss anyone is currently pulling (max ordinal among every
     /// guild's live, not-yet-defeated pull), plus whichever guild has the best (lowest
-    /// remaining health%) live pull on it. Returns nil on any network/decode failure so the
-    /// widget can fall back to its last known state instead of showing an error.
+    /// remaining health%) live pull on it. Falls back to the last successfully-fetched state
+    /// (cached in this extension's own UserDefaults) on any network/decode failure, or when
+    /// nobody currently has a live pull — nil only if we've never successfully fetched at all.
     static func fetchCurrentBoss() async -> WidgetBossState? {
         do {
             async let encountersTask = fetchEncounters()
@@ -108,18 +118,30 @@ enum RWFWidgetData {
 
             guard let frontierSlug = bestPullBySlug.keys.max(by: { (encounterBySlug[$0]?.ordinal ?? -1) < (encounterBySlug[$1]?.ordinal ?? -1) }),
                   let boss = encounterBySlug[frontierSlug] else {
-                return nil
+                return loadCachedState()
             }
             let best = bestPullBySlug[frontierSlug]
             let iconData = try? await fetchIconData(path: boss.iconUrl)
 
-            return WidgetBossState(
+            let state = WidgetBossState(
                 bossName: boss.name, bossOrdinal: boss.ordinal + 1, totalBosses: encounters.count, iconData: iconData,
                 bestGuildName: best?.guild, bestPercent: best?.percent, pullCount: best?.pullCount
             )
+            cache(state)
+            return state
         } catch {
-            return nil
+            return loadCachedState()
         }
+    }
+
+    private static func cache(_ state: WidgetBossState) {
+        guard let data = try? JSONEncoder().encode(state) else { return }
+        UserDefaults.standard.set(data, forKey: cacheKey)
+    }
+
+    private static func loadCachedState() -> WidgetBossState? {
+        guard let data = UserDefaults.standard.data(forKey: cacheKey) else { return nil }
+        return try? JSONDecoder().decode(WidgetBossState.self, from: data)
     }
 
     private static func fetchEncounters() async throws -> [EncounterRef] {
