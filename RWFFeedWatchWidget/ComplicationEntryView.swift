@@ -46,14 +46,38 @@ private func killProgress(_ percent: Double?) -> Double {
     return max(0, min(100, 100 - percent)) / 100
 }
 
-/// Remaining boss health as a fraction, unlike killProgress above — this one is for the
-/// rectangular complication's linear bar, which reads as a health bar: full at fight start,
-/// draining down (its filled/leading edge receding from right toward left) as the boss takes
-/// damage, empty at 0% health. Left = 0% is Gauge's own default fill origin, so no custom
-/// drawing is needed — just feed it the health fraction directly instead of the inverted one.
+/// Remaining boss health as a fraction, unlike killProgress above — this one drives HealthBar
+/// below: full at pull start, draining down (its right edge receding toward the left) as the
+/// boss takes damage, empty at 0% health.
 private func healthFraction(_ percent: Double?) -> Double {
     guard let percent else { return 1 }
     return max(0, min(100, percent)) / 100
+}
+
+/// A plain, explicitly-drawn bar rather than `Gauge(...).gaugeStyle(.accessoryLinear)` — the
+/// System gauge style's exact fill anchor/direction wasn't reliably matching "left = 0%,
+/// depletes right to left" in practice, and this removes any ambiguity: the track always
+/// spans the full width, the filled portion is always anchored to the leading (left) edge and
+/// sized to `fraction` of the width, full stop.
+private struct HealthBar: View {
+    /// 0...1, remaining boss health.
+    let fraction: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                // The depleted portion stays visible as a dim tint of the same accent color
+                // (not a neutral gray) so it still reads as "part of this bar," not unrelated
+                // chrome.
+                Capsule()
+                    .fill(rwfAccent.opacity(0.25))
+                Capsule()
+                    .fill(rwfAccent)
+                    .frame(width: geo.size.width * max(0, min(1, fraction)))
+            }
+        }
+        .frame(height: 4)
+    }
 }
 
 struct CircularComplication: View {
@@ -88,11 +112,7 @@ struct RectangularComplication: View {
                 .foregroundStyle(rwfAccent)
                 .lineLimit(1)
 
-            Gauge(value: healthFraction(boss?.bestPercent)) {
-                EmptyView()
-            }
-            .gaugeStyle(.accessoryLinear)
-            .tint(rwfAccent)
+            HealthBar(fraction: healthFraction(boss?.bestPercent))
 
             if let guild = boss?.bestGuildName {
                 Text("\(percentText(boss?.bestPercent)) · \(guild)")
