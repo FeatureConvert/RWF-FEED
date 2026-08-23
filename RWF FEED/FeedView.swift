@@ -12,7 +12,7 @@ struct FeedView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated, creditLabel: "Feed by Raider.IO") {
                     showingSettings = true
                 }
 
@@ -65,6 +65,9 @@ struct ScreenHeader: View {
     let title: String
     var isLoading: Bool = false
     var lastUpdated: Date? = nil
+    /// "Feed by Raider.IO" on the Feed tab (it's literally their feed); every other tab
+    /// shows the more accurate "Data by Raider.IO" since they're derived views, not the feed.
+    var creditLabel: String = "Data by Raider.IO"
     /// Shows a gear button that calls this when tapped — used on the Feed tab to open
     /// Settings. Omitted (nil) everywhere else.
     var onSettingsTapped: (() -> Void)? = nil
@@ -77,9 +80,15 @@ struct ScreenHeader: View {
                         .font(Theme.screenTitle)
                         .foregroundStyle(Theme.textPrimary)
                     Link(destination: URL(string: "https://raider.io")!) {
-                        Text("Feed by Raider.IO")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Theme.textSecondary)
+                        HStack(spacing: 3) {
+                            Image("RaiderIOMark")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 12, height: 12)
+                            Text(creditLabel)
+                                .font(.system(size: 11))
+                                .foregroundStyle(Theme.textSecondary)
+                        }
                     }
                 }
                 if let lastUpdated {

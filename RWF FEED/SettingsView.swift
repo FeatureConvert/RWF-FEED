@@ -54,9 +54,15 @@ struct SettingsView: View {
 
                 Section {
                     Link(destination: URL(string: "https://raider.io")!) {
-                        Text("Data provided by Raider.IO")
-                            .font(.footnote)
-                            .foregroundStyle(Theme.textSecondary)
+                        HStack(spacing: 5) {
+                            Image("RaiderIOMark")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 14, height: 14)
+                            Text("Data provided by Raider.IO")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .listRowBackground(Color.clear)
