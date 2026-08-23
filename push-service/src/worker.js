@@ -9,8 +9,14 @@
 // doesn't depend on the editorial feed ever posting about that guild.
 //
 // Endpoints:
-//   POST /register   { "deviceToken": "<hex>", "guildIds": [<number>, ...] }
-//   GET  /check                                   — manually trigger a poll, for testing
+//   POST /register              { "deviceToken": "<hex>", "guildIds": [<number>, ...] }
+//   GET  /check?secret=<value>  — manually trigger a poll, for testing
+//   GET  /test-push?secret=<value> — send a placeholder push to every registered device
+//
+// /check and /test-push require ADMIN_SECRET (a Worker secret, see README) as a `secret`
+// query param — without it, anyone who finds the URL could enumerate every registered
+// device token from /test-push's response, or spam real polls via /check. /register has no
+// such gate: it only ever adds/updates one device's own token, nothing to protect.
 
 const FEED_SLUG = "the-venomous-abyss-global-coverage";
 const RAID_SLUG = "the-venomous-abyss";
@@ -40,6 +46,7 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/check") {
+      if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
       const [posts, kills] = await Promise.all([checkForNewPosts(env), checkGuildKills(env)]);
       return new Response(JSON.stringify({ posts, kills }), {
         headers: { "content-type": "application/json" },
@@ -47,6 +54,7 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/test-push") {
+      if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
       const devices = await getDevices(env);
       const results = [];
       for (const device of devices) {
@@ -68,6 +76,11 @@ export default {
   },
 };
 
+function isAuthorized(url, env) {
+  const provided = url.searchParams.get("secret");
+  return typeof env.ADMIN_SECRET === "string" && env.ADMIN_SECRET.length > 0 && provided === env.ADMIN_SECRET;
+}
+
 async function checkForNewPosts(env) {
   const resp = await fetch(
     `https://raider.io/api/threads/list?slug=${FEED_SLUG}`
@@ -81,6 +94,11 @@ async function checkForNewPosts(env) {
     return { ok: true, newPosts: 0 };
   }
 
+  // KV reads can be up to ~60s stale across colos, and this cron overlapping a manual
+  // /check hitting a different colo could both read the same lastSeenRaw and both push the
+  // same "new" post — apns-collapse-id means the device sees one alert, not two, so this is
+  // a latent double-send rather than a user-visible bug. Same tradeoff as the device-storage
+  // races documented near upsertDevice: not worth a Durable Object for this app's scale.
   const maxId = posts.reduce((m, p) => Math.max(m, p.id), 0);
   const lastSeenRaw = await env.PUSH_KV.get(LAST_SEEN_KEY);
 
@@ -114,27 +132,47 @@ async function checkForNewPosts(env) {
 /// Pushes to devices that favorited a specific guild the moment that guild's boss count
 /// increases — independent of the editorial feed, which might lag behind or never mention a
 /// given guild's kill at all.
+///
+/// Progress comes from raid-rankings' per-guild `encountersDefeated`, NOT the raid-race
+/// timeline: raider.io caps each timeline progress step to a handful of guild entries, so a
+/// favorited guild outside that short list would simply never show a progress increase and
+/// never get pushed. raid-rankings has no such cap — every tracked guild's defeats are
+/// listed. raid-race is still fetched, but only for the encounter name catalog (boss slug ->
+/// name/ordinal), which raid-rankings' encountersDefeated doesn't carry.
 async function checkGuildKills(env) {
   const devices = (await getDevices(env)).filter((d) => d.guildIds.length > 0);
   if (devices.length === 0) return { ok: true, watchedDevices: 0 };
 
-  const resp = await fetch(
-    `https://raider.io/api/raids/raid-race?raid=${RAID_SLUG}&region=world&difficulty=mythic`
-  );
-  if (!resp.ok) return { ok: false, status: resp.status };
-  const data = await resp.json();
-  const tracker = data.worldFirstTracker || {};
-  const timeline = tracker.timelines?.[0]?.timeline || [];
-  const encounters = [...(tracker.raid?.encounters || [])].sort((a, b) => a.ordinal - b.ordinal);
+  const [raceResp, rankResp] = await Promise.all([
+    fetch(`https://raider.io/api/raids/raid-race?raid=${RAID_SLUG}&region=world&difficulty=mythic`),
+    fetch(`https://raider.io/api/v1/raiding/raid-rankings?raid=${RAID_SLUG}&difficulty=mythic&region=world`),
+  ]);
+  if (!raceResp.ok) return { ok: false, status: raceResp.status };
+  if (!rankResp.ok) return { ok: false, status: rankResp.status };
+
+  const raceData = await raceResp.json();
+  const encounters = [...(raceData.worldFirstTracker?.raid?.encounters || [])].sort((a, b) => a.ordinal - b.ordinal);
+  const encounterBySlug = {};
+  for (const encounter of encounters) encounterBySlug[encounter.slug] = encounter;
+
+  const rankData = await rankResp.json();
+  const rankings = rankData.raidRankings || [];
 
   const bestProgress = {};
-  for (const step of timeline) {
-    for (const kill of step.guilds) {
-      const gid = String(kill.guild.id);
-      if (!bestProgress[gid] || step.progress > bestProgress[gid].progress) {
-        bestProgress[gid] = { progress: step.progress, guildName: kill.guild.displayName };
-      }
-    }
+  for (const entry of rankings) {
+    const defeated = entry.encountersDefeated || [];
+    if (defeated.length === 0) continue;
+
+    // The most recent kill (by defeat time, not array order) is the one worth naming in
+    // the push — not necessarily the encounter with the highest ordinal, since guilds can
+    // clear bosses out of order.
+    const latest = defeated.reduce((a, b) => (new Date(a.firstDefeated) > new Date(b.firstDefeated) ? a : b));
+
+    bestProgress[String(entry.guild.id)] = {
+      progress: defeated.length,
+      guildName: entry.guild.displayName,
+      bossName: encounterBySlug[latest.slug]?.name ?? latest.slug,
+    };
   }
 
   const previousRaw = await env.PUSH_KV.get(GUILD_PROGRESS_KEY);
@@ -156,15 +194,13 @@ async function checkGuildKills(env) {
     const prevProgress = previous[gid] ?? 0;
     if (current.progress <= prevProgress) continue;
 
-    const boss = encounters[current.progress - 1];
-    const bossName = boss ? boss.name : `boss ${current.progress}`;
     const watchers = devices.filter((d) => d.guildIds.some((id) => String(id) === gid));
     for (const device of watchers) {
       await sendPush(
         env,
         device.token,
         current.guildName,
-        `Killed ${bossName}! (${current.progress}/${encounters.length})`,
+        `Killed ${current.bossName}! (${current.progress}/${encounters.length})`,
         `guild-${gid}-${current.progress}`
       );
       pushCount++;
@@ -177,24 +213,54 @@ async function checkGuildKills(env) {
 
 // ---- APNs ----
 
-async function sendPush(env, deviceToken, title, body, collapseId) {
-  const jwt = await makeApnsJwt(env);
-  const apnsHost =
-    (env.APNS_ENV || "sandbox") === "production"
-      ? "https://api.push.apple.com"
-      : "https://api.sandbox.push.apple.com";
+// Module-level, so it's reused across invocations within the same warm Worker isolate —
+// Apple throttles how often a provider token can be refreshed (TooManyProviderTokenUpdates),
+// and minting a fresh one per push (N devices x M new posts, every minute) risked exactly
+// that. Isolates aren't guaranteed to stay warm, so this is a best-effort cache, not a
+// persistent one — but it cuts JWT generation by roughly two orders of magnitude in practice.
+let cachedApnsJwt = null;
+let cachedApnsJwtIssuedAt = 0;
+const APNS_JWT_MAX_AGE_SECONDS = 50 * 60; // Apple allows up to ~60 min; refresh a bit early
 
-  const res = await fetch(`${apnsHost}/3/device/${deviceToken}`, {
-    method: "POST",
-    headers: {
-      authorization: `bearer ${jwt}`,
-      "apns-topic": env.APNS_BUNDLE_ID,
-      "apns-push-type": "alert",
-      "apns-priority": "10",
-      "apns-collapse-id": collapseId,
-    },
-    body: JSON.stringify({ aps: { alert: { title, body }, sound: "default" } }),
-  });
+async function getApnsJwt(env) {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedApnsJwt && now - cachedApnsJwtIssuedAt < APNS_JWT_MAX_AGE_SECONDS) {
+    return cachedApnsJwt;
+  }
+  cachedApnsJwt = await makeApnsJwt(env);
+  cachedApnsJwtIssuedAt = now;
+  return cachedApnsJwt;
+}
+
+// Never throws — a rejected fetch (network error reaching APNs, not just a non-2xx
+// response) used to propagate straight out of the caller's loop, skipping the
+// lastSeenPostId/guildProgress KV write that follows it and causing every "new" item to be
+// re-sent to every device on the next cron tick. Callers get an {status, error} result for
+// both failure modes instead, same as they already did for non-2xx.
+async function sendPush(env, deviceToken, title, body, collapseId) {
+  let res;
+  try {
+    const jwt = await getApnsJwt(env);
+    const apnsHost =
+      (env.APNS_ENV || "sandbox") === "production"
+        ? "https://api.push.apple.com"
+        : "https://api.sandbox.push.apple.com";
+
+    res = await fetch(`${apnsHost}/3/device/${deviceToken}`, {
+      method: "POST",
+      headers: {
+        authorization: `bearer ${jwt}`,
+        "apns-topic": env.APNS_BUNDLE_ID,
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+        "apns-collapse-id": collapseId,
+      },
+      body: JSON.stringify({ aps: { alert: { title, body }, sound: "default" } }),
+    });
+  } catch (error) {
+    console.log("APNs request failed", deviceToken, error);
+    return { status: 0, error: String(error) };
+  }
 
   if (res.ok) {
     return { status: res.status, apnsId: res.headers.get("apns-id") };
@@ -249,6 +315,15 @@ function base64urlBytes(bytes) {
 
 // ---- Device storage ----
 // { token: "<hex>", guildIds: number[] } — an empty list means "all feed posts".
+//
+// upsertDevice/removeDevice are read-modify-write, not atomic: two calls racing (e.g. two
+// devices registering close together, or a register racing the cron's own removeDevice on a
+// stale token) can both read the same blob and the second write clobbers the first. KV has
+// no compare-and-swap to close that window, and doing this properly would mean moving device
+// storage into a Durable Object. Deliberately not doing that here — with a personal app's
+// handful of devices registering rarely (app launch, or a notification-preference change),
+// the actual odds of two writes landing in the same few-hundred-ms window are low enough
+// not to be worth the rewrite. Revisit if this ever tracks more than a few devices.
 
 async function getDevices(env) {
   const raw = await env.PUSH_KV.get(DEVICES_KEY);
