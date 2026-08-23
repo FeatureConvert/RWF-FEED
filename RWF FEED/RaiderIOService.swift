@@ -143,8 +143,9 @@ extension WorldFirstTracker {
     /// be trusted as the primary source anymore. The timeline is still consulted for `isLive`
     /// (streamer status), which raid-rankings doesn't carry, and for any guild raid-rankings
     /// itself doesn't have data for (falls back to the timeline's own, laggier count rather
-    /// than dropping the guild).
-    func standings(rankings: [RaidRankingEntry], regionSlug: String = "world") -> [GuildStanding] {
+    /// than dropping the guild). Capped to the top `limit` guilds — raid-rankings itself only
+    /// ever returns the top 50, and that's still more than useful to show in a tracker list.
+    func standings(rankings: [RaidRankingEntry], regionSlug: String = "world", limit: Int = 25) -> [GuildStanding] {
         let timelineBest = bestProgressPerGuild(timeline(regionSlug: regionSlug))
 
         var byGuildId: [Int: GuildStanding] = [:]
@@ -163,7 +164,7 @@ extension WorldFirstTracker {
             )
         }
 
-        return byGuildId.values.sorted { lhs, rhs in
+        let sorted = byGuildId.values.sorted { lhs, rhs in
             if lhs.bossesDown != rhs.bossesDown { return lhs.bossesDown > rhs.bossesDown }
             switch (lhs.lastKillAt, rhs.lastKillAt) {
             case let (l?, r?): return l < r
@@ -171,6 +172,7 @@ extension WorldFirstTracker {
             case (_, nil): return true
             }
         }
+        return Array(sorted.prefix(limit))
     }
 
     /// Flattens the same timeline buckets into one event per guild-kill, newest first —
