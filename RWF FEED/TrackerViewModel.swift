@@ -12,6 +12,7 @@ final class TrackerViewModel: ObservableObject {
     @Published private(set) var raid: RaidInfo?
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var lastUpdated: Date?
 
     private let service = RaiderIOService.shared
     private var pollTask: Task<Void, Never>?
@@ -39,6 +40,7 @@ final class TrackerViewModel: ObservableObject {
             let tracker = try await service.fetchTracker()
             raid = tracker.raid
             standings = tracker.standings()
+            lastUpdated = Date()
             errorMessage = nil
         } catch {
             errorMessage = "Couldn't load the tracker. Pull to try again."

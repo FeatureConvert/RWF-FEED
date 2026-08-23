@@ -11,6 +11,7 @@ final class FeedViewModel: ObservableObject {
     @Published private(set) var posts: [FeedPost] = []
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var lastUpdated: Date?
 
     private let service = RaiderIOService.shared
     private var pollTask: Task<Void, Never>?
@@ -37,6 +38,7 @@ final class FeedViewModel: ObservableObject {
         defer { isLoading = false }
         do {
             posts = try await service.fetchFeed()
+            lastUpdated = Date()
             errorMessage = nil
         } catch {
             errorMessage = "Couldn't load the feed. Pull to try again."

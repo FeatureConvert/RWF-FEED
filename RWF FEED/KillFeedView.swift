@@ -14,7 +14,7 @@ struct KillFeedView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading)
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated)
 
                 Group {
                     if viewModel.events.isEmpty && viewModel.isLoading {
@@ -87,13 +87,7 @@ struct KillFeedRow: View {
 
                 VStack(alignment: .trailing, spacing: 4) {
                     if event.rank == 1 {
-                        Text("WORLD FIRST")
-                            .font(Theme.liveBadgeLabel)
-                            .tracking(Theme.liveBadgeTracking)
-                            .foregroundStyle(Color(hex: "#292B31"))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color(hex: "#D2CEFD"), in: Capsule())
+                        WorldFirstBadge()
                     } else {
                         Text(event.rankLabel)
                             .font(.system(size: 13, weight: .semibold))

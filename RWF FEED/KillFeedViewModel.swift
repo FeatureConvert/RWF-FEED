@@ -11,6 +11,7 @@ final class KillFeedViewModel: ObservableObject {
     @Published private(set) var events: [KillFeedEvent] = []
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var lastUpdated: Date?
 
     private let service = RaiderIOService.shared
     private var pollTask: Task<Void, Never>?
@@ -37,6 +38,7 @@ final class KillFeedViewModel: ObservableObject {
         do {
             let tracker = try await service.fetchTracker()
             events = tracker.killFeedEvents()
+            lastUpdated = Date()
             errorMessage = nil
         } catch {
             errorMessage = "Couldn't load the kill feed. Pull to try again."
