@@ -1,13 +1,15 @@
 # App Store Submission — Reference Checklist
 
-Working notes for getting RWF Feed into TestFlight and, eventually, the App Store. Nothing
-here is time-sensitive — it's a reference to pick back up whenever. Status current as of
-2026-08-23.
+Working notes for getting Azeroth Watch (formerly branded "RWF Feed" — see naming decision
+below) into TestFlight and, eventually, the App Store. Nothing here is time-sensitive — it's
+a reference to pick back up whenever. Status current as of 2026-08-23.
 
 ## Current facts
 
 | | |
 |---|---|
+| App display name | **Azeroth Watch** (set via `INFOPLIST_KEY_CFBundleDisplayName` — what shows under the icon and in TestFlight/App Store, not the same as the project/scheme name below) |
+| Xcode project / scheme / repo name | "RWF FEED" / RWF-FEED — internal identifiers only, not renamed (not user-facing, not worth the churn/risk of a project rename) |
 | Bundle ID | `RIO.RWF-FEED` (widget: `RIO.RWF-FEED.RWFFeedWidget`, watch app: `RIO.RWF-FEED.watchkitapp`, watch widget: `RIO.RWF-FEED.watchkitapp.RWFFeedWatchWidget`) |
 | Team ID | `5X98G8X3FJ` |
 | Marketing version | 1.0 (build 1) |
@@ -15,11 +17,33 @@ here is time-sensitive — it's a reference to pick back up whenever. Status cur
 | Code signing | Automatic, Apple Development (dev-signed) |
 | Repo | https://github.com/FeatureConvert/RWF-FEED (private) |
 
+## Naming decision (final, 2026-08-23)
+
+Went through several rounds on this — see git history on this file for the full trail. Short
+version: flagged a real App Store collision with "Method RWF" (an existing, functionally
+similar app from an actual competing raid guild); explored dropping "RWF" entirely; landed on
+**Azeroth Watch**, checked against the App Store and found no collisions (a few loose
+community-project name overlaps — a private-server fan newspaper, an X account — but nothing
+that's an app). This also better reflects the app's scope now that it covers general WoW news
+(via Wowhead) alongside RWF-specific tracking, not just the race.
+
+Implemented:
+- Main app `CFBundleDisplayName` → "Azeroth Watch" (Home Screen icon label, TestFlight, App
+  Store listing name default).
+- Widget, watch app, and watch widget `CFBundleDisplayName` → "Azeroth Watch" (watch Home
+  Screen app list, in particular, is user-facing).
+- In-app trademark disclaimer and feedback email subject line updated to match.
+- **Not** renamed: the Xcode project file, scheme, target names, bundle ID, or the GitHub
+  repo — all internal/technical identifiers nobody but you and I ever see. Renaming those
+  would be pure churn with real risk (broken references, git history noise) for zero
+  user-facing benefit.
+
 ## What's already done
 
+- [x] **App name** — "Azeroth Watch," see naming decision above.
 - [x] **App icon** — 1024×1024 universal icon set with dark/tinted variants (`Assets.xcassets/AppIcon.appiconset`). No further action needed for submission.
 - [x] **Export compliance key** — `ITSAppUsesNonExemptEncryption = NO` added to the main target's build settings (Debug + Release). The app only uses standard HTTPS/APNs, which is exempt from export documentation requirements — this answers Apple's encryption question automatically on every future upload instead of prompting each time.
-- [x] **Trademark disclaimer** — added to the bottom of Settings, covering Blizzard/WoW, Raider.IO, and Wowhead: *"RWF Feed is a fan-made, unofficial app and is not affiliated with, endorsed by, or sponsored by Blizzard Entertainment, Inc., Raider.IO, or Wowhead/ZAM Network, LLC. World of Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc. Raider.IO and Wowhead are trademarks of their respective owners."* Standard practice for any WoW-adjacent fan app and something App Review commonly checks for.
+- [x] **Trademark disclaimer** — added to the bottom of Settings, covering Blizzard/WoW, Raider.IO, and Wowhead: *"Azeroth Watch is a fan-made, unofficial app and is not affiliated with, endorsed by, or sponsored by Blizzard Entertainment, Inc., Raider.IO, or Wowhead/ZAM Network, LLC. World of Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc. Raider.IO and Wowhead are trademarks of their respective owners."* Standard practice for any WoW-adjacent fan app and something App Review commonly checks for.
 - [x] **Raider.IO attribution** — required by their API terms (a link back to raider.io from any public-facing app using their data). Present on the Feed tab header and in Settings, with their official brand mark (sourced from their own CDN).
 - [x] **Wowhead attribution** — same pattern, present on the News tab and in Settings.
 - [x] **No third-party logo/Marks reproduced without review** — both credits use official, sourced marks (not fabricated), added after checking each site's terms of use for logo-reproduction restrictions.
@@ -30,25 +54,11 @@ here is time-sensitive — it's a reference to pick back up whenever. Status cur
 Requires your own browser session (Apple ID with a paid Developer Program membership,
 $99/year, if not already enrolled) — I can't do this step. At https://appstoreconnect.apple.com:
 - Register the bundle ID (`RIO.RWF-FEED`) under Certificates, Identifiers & Profiles if not already there.
-- Create a new app record: pick a display name (App Store name, not necessarily "RWF Feed" — check availability), primary language, bundle ID, SKU (any unique internal string).
-- **Name collision — known, reviewed, decided**: **"Method RWF"** is already live on the App
-  Store (seller: Method Gaming Limited, developer: `rwf.gg`) — published by Method, one of the
-  actual top-tier guilds competing in the Race to World First (placed top 3 in the last race).
-  Its own description: *"The Race to World First app provides curated textual updates about
-  the World of Warcraft raid progress and shows always up to date leaderboards for each boss
-  and even each region"* with *"push notifications for up to the 10 first defeats of each
-  encounter"* — functionally close to RWF Feed's own feature set. Last updated 11/2023, so
-  likely dormant/unmaintained at this point, which lowers (but doesn't eliminate) the practical
-  risk of a live objection.
-  - **Decision (2026-08-23)**: keep "RWF" in the app's name. "RWF" isn't a registered
-    trademark — it's shorthand for "Race to World First," a generic community term nobody
-    owns. Reviewed the collision above and decided the risk is acceptable rather than
-    renaming. Worth revisiting only if Method's app becomes active again or App Review
-    specifically flags it during a real submission.
+- Create a new app record: display name **Azeroth Watch** (see naming decision above — already checked against the App Store, no collisions found), primary language, bundle ID, SKU (any unique internal string).
 
 ### 2. Privacy Policy URL
 **Required** — Apple requires every app to have a privacy policy URL in App Store Connect,
-regardless of how little data is collected. RWF Feed doesn't have one yet. It needs to be
+regardless of how little data is collected. Azeroth Watch doesn't have one yet. It needs to be
 hosted somewhere public (a GitHub Pages page off this repo would work, or any static host)
 and cover:
 - Device push token — collected and sent to `rwf-feed-push.rwf-feed.workers.dev` (a
@@ -113,7 +123,6 @@ Not drafted yet:
 
 ## Things to decide, not yet decided
 
-- **Display name** for the App Store listing (currently just "RWF FEED" as the Xcode product name).
 - **Category**: Reference vs. Utilities vs. something else.
 - **Public repo or stays private?** — doesn't block submission either way (App Review doesn't
   need repo access), but affects whether a GitHub Pages privacy policy / support page is
@@ -138,6 +147,6 @@ Not drafted yet:
   pattern was applied anyway for consistency.
 - Neither has a "no App Store distribution" clause — the "personal/non-commercial use" language
   is about not reselling their data or running a competing service, not about whether the
-  consuming app itself is distributed via the App Store. RWF Feed doesn't charge for anything
+  consuming app itself is distributed via the App Store. Azeroth Watch doesn't charge for anything
   or resell their data, so this should be fine, but it's not a formal legal opinion — worth
   keeping in mind if the app ever adds monetization.

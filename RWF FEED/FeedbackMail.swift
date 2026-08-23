@@ -16,7 +16,7 @@ import UIKit
 
 enum FeedbackMail {
     static let recipient = "Nexrax@icloud.com"
-    static let subject = "RWF Feed Feedback"
+    static let subject = "Azeroth Watch Feedback"
 
     static var body: String {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
