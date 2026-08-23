@@ -23,7 +23,10 @@ struct EmbedInfo {
 }
 
 enum PostContent {
-    static func parseBlocks(from html: String) -> [PostContentBlock] {
+    /// `nonisolated` so this can genuinely run off the main actor — see
+    /// FeedViewModel.parseNewBlocks, which parses each post's HTML once, in parallel, instead
+    /// of leaving it to be recomputed on the main thread every time a row scrolls into view.
+    nonisolated static func parseBlocks(from html: String) -> [PostContentBlock] {
         var blocks: [PostContentBlock] = []
 
         let pattern = #"<iframe\b[^>]*>.*?</iframe>|<img\b[^>]*/?>"#
@@ -69,7 +72,7 @@ enum PostContent {
         return blocks
     }
 
-    private static func firstMatch(_ pattern: String, in text: String) -> String? {
+    nonisolated private static func firstMatch(_ pattern: String, in text: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
         let ns = text as NSString
         guard let m = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)), m.numberOfRanges > 1 else { return nil }
