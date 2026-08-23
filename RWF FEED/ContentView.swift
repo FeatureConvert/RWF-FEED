@@ -24,6 +24,9 @@ struct ContentView: View {
 
             HeartbreakView()
                 .tabItem { Label("Heartbreak", systemImage: "heart.slash.fill") }
+
+            NewsView()
+                .tabItem { Label("News", systemImage: "newspaper.fill") }
         }
         .tint(Theme.accent)
     }

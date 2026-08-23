@@ -65,9 +65,15 @@ struct ScreenHeader: View {
     let title: String
     var isLoading: Bool = false
     var lastUpdated: Date? = nil
-    /// "Feed by Raider.IO" on the Feed tab (it's literally their feed); every other tab
-    /// shows the more accurate "Data by Raider.IO" since they're derived views, not the feed.
+    /// "Feed by Raider.IO" on the Feed tab (it's literally their feed); every other
+    /// raider.io-backed tab shows the more accurate "Data by Raider.IO" since they're derived
+    /// views, not the feed. The News tab overrides all three credit params for Wowhead instead.
     var creditLabel: String = "Data by Raider.IO"
+    var creditURL: URL = URL(string: "https://raider.io")!
+    /// Asset catalog image name for the small mark next to the credit text. Nil omits the
+    /// mark entirely — used for News since Wowhead's logo hasn't been sourced/vetted the way
+    /// Raider.IO's was.
+    var creditMark: String? = "RaiderIOMark"
     /// Shows a gear button that calls this when tapped — used on the Feed tab to open
     /// Settings. Omitted (nil) everywhere else.
     var onSettingsTapped: (() -> Void)? = nil
@@ -79,12 +85,14 @@ struct ScreenHeader: View {
                     Text(title)
                         .font(Theme.screenTitle)
                         .foregroundStyle(Theme.textPrimary)
-                    Link(destination: URL(string: "https://raider.io")!) {
+                    Link(destination: creditURL) {
                         HStack(spacing: 3) {
-                            Image("RaiderIOMark")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 12, height: 12)
+                            if let creditMark {
+                                Image(creditMark)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 12, height: 12)
+                            }
                             Text(creditLabel)
                                 .font(.system(size: 11))
                                 .foregroundStyle(Theme.textSecondary)
