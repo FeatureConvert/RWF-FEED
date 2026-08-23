@@ -135,21 +135,42 @@ extension WorldFirstTracker {
         return best
     }
 
-    /// Flattens the per-boss-level `timeline` buckets into one ranked row per guild.
-    func standings(regionSlug: String = "world") -> [GuildStanding] {
-        let steps = timeline(regionSlug: regionSlug)
-        guard !steps.isEmpty else { return [] }
+    /// One ranked row per guild, using raid-rankings (raider.io's live Desktop App pull
+    /// tracking) as the source of truth for boss count and kill time — raid-race's own
+    /// `timeline` has been observed to omit guilds entirely for extended stretches of the race
+    /// (confirmed against raider.io's own public leaderboard: 9 guilds sitting at 2/8 there,
+    /// while the timeline only carried 6 guilds total across every progress level), so it can't
+    /// be trusted as the primary source anymore. The timeline is still consulted for `isLive`
+    /// (streamer status), which raid-rankings doesn't carry, and for any guild raid-rankings
+    /// itself doesn't have data for (falls back to the timeline's own, laggier count rather
+    /// than dropping the guild).
+    func standings(rankings: [RaidRankingEntry], regionSlug: String = "world") -> [GuildStanding] {
+        let timelineBest = bestProgressPerGuild(timeline(regionSlug: regionSlug))
 
-        return bestProgressPerGuild(steps).values
-            .map { GuildStanding(guild: $0.guild, bossesDown: $0.progress, lastKillAt: $0.killedAt, isLive: $0.isLive) }
-            .sorted { lhs, rhs in
-                if lhs.bossesDown != rhs.bossesDown { return lhs.bossesDown > rhs.bossesDown }
-                switch (lhs.lastKillAt, rhs.lastKillAt) {
-                case let (l?, r?): return l < r
-                case (nil, _): return false
-                case (_, nil): return true
-                }
+        var byGuildId: [Int: GuildStanding] = [:]
+        for entry in rankings {
+            let bossesDown = entry.encountersDefeated.count
+            guard bossesDown > 0 else { continue }
+            let lastKillAt = entry.encountersDefeated.map(\.firstDefeated).max()
+            let isLive = timelineBest[entry.guild.id]?.isLive ?? false
+            byGuildId[entry.guild.id] = GuildStanding(
+                guild: entry.guild, bossesDown: bossesDown, lastKillAt: lastKillAt, isLive: isLive
+            )
+        }
+        for best in timelineBest.values where byGuildId[best.guild.id] == nil {
+            byGuildId[best.guild.id] = GuildStanding(
+                guild: best.guild, bossesDown: best.progress, lastKillAt: best.killedAt, isLive: best.isLive
+            )
+        }
+
+        return byGuildId.values.sorted { lhs, rhs in
+            if lhs.bossesDown != rhs.bossesDown { return lhs.bossesDown > rhs.bossesDown }
+            switch (lhs.lastKillAt, rhs.lastKillAt) {
+            case let (l?, r?): return l < r
+            case (nil, _): return false
+            case (_, nil): return true
             }
+        }
     }
 
     /// Flattens the same timeline buckets into one event per guild-kill, newest first —
