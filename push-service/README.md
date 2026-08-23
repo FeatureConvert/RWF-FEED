@@ -10,12 +10,13 @@ Deployed at: `https://rwf-feed-push.rwf-feed.workers.dev`
 
 ## How it works
 
-Each registered device carries three independent flags — `raiderioEnabled`,
-`wowheadEnabled`, and `spoilerFreeEnabled` — set from the toggles in Settings,
-filtering/redacting server-side (there's no way to veto or rewrite a push client-side
-once APNs has delivered it while the app is closed). There's no per-guild filtering
-within `raiderioEnabled` (tried and removed; the favorited-guild push never fired
-reliably enough to be worth the complexity) — it's an all-or-nothing category, same as
+Each registered device carries five independent preferences — `raiderioEnabled`,
+`wowheadEnabled`, `spoilerFreeEnabled`, `heartbreakThresholdPercent`, and
+`notifyNonWorldFirstHeartbreaks` — set from Settings, filtering/redacting/thresholding
+server-side (there's no way to veto or rewrite a push client-side once APNs has
+delivered it while the app is closed). There's no per-guild filtering within
+`raiderioEnabled` (tried and removed; the favorited-guild push never fired reliably
+enough to be worth the complexity) — it's an all-or-nothing category, same as
 `wowheadEnabled`.
 
 - **Cron** (`* * * * *`, every minute): runs all three checks below.
@@ -24,11 +25,13 @@ reliably enough to be worth the complexity) — it's an all-or-nothing category,
 - **`checkRaiderIOEvents`**: fetches raid-race (boss names) and raid-rankings (live
   pull/defeat data) once, then runs both of the following against that shared data —
   they'd otherwise each need the same two fetches every minute:
-  - **`checkHeartbreaks`**: "Major Heartbreaker" pushes — a guild pulling a
-    globally-unclaimed boss (nobody has killed it yet, not just that guild) under
-    `HEARTBREAK_THRESHOLD_PERCENT` (5.01%) remaining health. Only on a new record close
-    call per guild+boss — tracked in `heartbreakBest` in KV — so a guild wiping
-    repeatedly around the same percent doesn't get pushed every minute.
+  - **`checkHeartbreaks`**: "Major Heartbreaker" pushes — a guild pulling a boss down to
+    a new-record-low remaining health%. Record-tracking (`heartbreakBest` in KV, per
+    guild+boss) is threshold-agnostic by design — each device then applies its own
+    `heartbreakThresholdPercent` (default `HEARTBREAK_DEFAULT_THRESHOLD_PERCENT`, 5.01%)
+    and `notifyNonWorldFirstHeartbreaks` (default off — only reach devices that opted in
+    for a close call on a boss another guild already claimed) independently at push
+    time, since two devices can disagree on both.
   - **`checkWorldFirstKills`**: "World First!" pushes — the first guild to defeat each
     boss, tracked in `worldFirstKillsSeen` in KV so each boss only pushes once. For
     `spoilerFreeEnabled` devices, the guild/boss are redacted to a generic "Spoiler
@@ -39,9 +42,9 @@ reliably enough to be worth the complexity) — it's an all-or-nothing category,
   `pubDate` against `wowheadLastSeenPubDate` in KV, and pushes new articles ("WoW News" /
   article title) to every `wowheadEnabled` device.
 - **`POST /register`**: the app calls this after `registerForRemoteNotifications()`
-  succeeds, and again whenever a Settings toggle changes, with
-  `{ "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool, "spoilerFreeEnabled": bool }`.
-  Upserts by token — a device that re-registers gets its existing entry's flags
+  succeeds, and again whenever a Settings toggle/slider changes, with
+  `{ "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool, "spoilerFreeEnabled": bool, "heartbreakThresholdPercent": number, "notifyNonWorldFirstHeartbreaks": bool }`.
+  Upserts by token — a device that re-registers gets its existing entry's preferences
   updated, not a duplicate. A `BadDeviceToken`/410 response from APNs on send removes
   the device automatically (e.g. after a reinstall).
 - **`GET /check?secret=<value>`**: manually triggers all three checks above. Returns
@@ -99,11 +102,12 @@ Binding `PUSH_KV`, id `e8207fa029d447c1a5e574a43bffef07` (see `wrangler.toml`). 
   close call already pushed for each guild+boss pair, so only a new record re-pushes.
 - `wowheadLastSeenPubDate` — ISO date string, the newest Wowhead article `pubDate` seen so
   far.
-- `devices` — JSON array of `{ token, raiderioEnabled, wowheadEnabled }`. Also accepts
-  (read-only) older shapes from before these flags existed — a plain token string, an
-  object missing the flags, or per-guild shapes left over from the removed
-  notification-filtering feature — `getDevices` normalizes all of these, defaulting
-  missing flags to `true`.
+- `devices` — JSON array of `{ token, raiderioEnabled, wowheadEnabled,
+  spoilerFreeEnabled, heartbreakThresholdPercent, notifyNonWorldFirstHeartbreaks }`.
+  Also accepts (read-only) older shapes from before some of these existed — a plain
+  token string, or an object missing some fields — `normalizeDevice`/`getDevices`
+  default missing fields the same way `addDevice` does (raiderioEnabled/wowheadEnabled
+  → `true`, everything else → off/standard threshold).
 - `deviceTokens` — the original key name, from before `devices` existed. Only read as a
   last-resort fallback if `devices` doesn't exist yet; never written to anymore.
 

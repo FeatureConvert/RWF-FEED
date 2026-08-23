@@ -69,12 +69,16 @@ struct NewsArticleRow: View {
                 if let imageURL = article.imageURL {
                     AsyncImage(url: imageURL) { phase in
                         if let image = phase.image {
-                            image.resizable().aspectRatio(16.0 / 9.0, contentMode: .fill)
+                            // .scaledToFill() (not an overridden .aspectRatio) preserves the
+                            // image's own proportions and crops to the frame below, rather than
+                            // stretching the pixels to force a 16:9 shape.
+                            image.resizable().scaledToFill()
                         } else {
-                            Color.clear.aspectRatio(16.0 / 9.0, contentMode: .fill)
+                            Color.clear
                         }
                     }
                     .frame(maxWidth: .infinity)
+                    .frame(height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .clipped()
                 }

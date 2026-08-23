@@ -55,7 +55,36 @@ struct SettingsView: View {
                     Text("Notifications")
                         .foregroundStyle(Theme.textSecondary)
                 } footer: {
-                    Text("Raider.IO Updates covers new feed posts and Major Heartbreaker close-call alerts. Spoiler-Free Mode hides which guild/boss in World First kill notifications — you'll still be alerted, just as \"Spoiler Alert\" instead.")
+                    Text("Raider.IO Updates covers new feed posts, Major Heartbreaker close-call alerts, and World First kill announcements. Spoiler-Free Mode hides which guild/boss in World First pushes — you'll still be alerted, just as \"Spoiler Alert\" instead.")
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .listRowBackground(Theme.cardSurface)
+
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Close Call Threshold")
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                            Text(String(format: "%.1f%%", notificationPreferences.heartbreakThresholdPercent))
+                                .foregroundStyle(Theme.textSecondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: $notificationPreferences.heartbreakThresholdPercent, in: 1...25, step: 0.5)
+                            .tint(Theme.accent)
+                    }
+                    .padding(.vertical, 2)
+
+                    Toggle(isOn: $notificationPreferences.notifyNonWorldFirstHeartbreaks) {
+                        Label("Notify for Non-World-First Close Calls", systemImage: "flag.checkered")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                } header: {
+                    Text("Close Calls")
+                        .foregroundStyle(Theme.textSecondary)
+                } footer: {
+                    Text("Major Heartbreaker pushes when a guild's best pull drops under this remaining health%, on a new record low. By default that only covers bosses still part of the World First race — turn the toggle on to also get pushed for a guild's close call on a boss another guild has already killed.")
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .listRowBackground(Theme.cardSurface)

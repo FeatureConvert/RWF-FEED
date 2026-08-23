@@ -18,6 +18,8 @@ enum PushRegistration {
         let raiderioEnabled: Bool
         let wowheadEnabled: Bool
         let spoilerFreeEnabled: Bool
+        let heartbreakThresholdPercent: Double
+        let notifyNonWorldFirstHeartbreaks: Bool
     }
 
     static func register(deviceToken: Data) {
@@ -42,7 +44,9 @@ enum PushRegistration {
             deviceToken: tokenHex,
             raiderioEnabled: NotificationPreferences.shared.raiderioEnabled,
             wowheadEnabled: NotificationPreferences.shared.wowheadEnabled,
-            spoilerFreeEnabled: NotificationPreferences.shared.spoilerFreeEnabled
+            spoilerFreeEnabled: NotificationPreferences.shared.spoilerFreeEnabled,
+            heartbreakThresholdPercent: NotificationPreferences.shared.heartbreakThresholdPercent,
+            notifyNonWorldFirstHeartbreaks: NotificationPreferences.shared.notifyNonWorldFirstHeartbreaks
         )
         request.httpBody = try? JSONEncoder().encode(payload)
 
