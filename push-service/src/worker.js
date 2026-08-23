@@ -3,13 +3,13 @@
 // appears. This is what lets RWF FEED notify you even while the app is fully closed —
 // local notifications only fire while the app's own polling loop is running.
 //
-// Each device picks a notification mode: `guildId: null` gets every global feed post
-// (the original behavior); `guildId: <id>` instead gets a push only when that specific
-// guild's boss count increases, sourced independently from the raid-race timeline so it
+// Each device has a list of favorite guild IDs: an empty list gets every global feed post
+// (the original behavior); a non-empty list instead gets a push only when one of those
+// guilds' boss count increases, sourced independently from the raid-race timeline so it
 // doesn't depend on the editorial feed ever posting about that guild.
 //
 // Endpoints:
-//   POST /register   { "deviceToken": "<hex>", "guildId": <number|null> }
+//   POST /register   { "deviceToken": "<hex>", "guildIds": [<number>, ...] }
 //   GET  /check                                   — manually trigger a poll, for testing
 
 const FEED_SLUG = "the-venomous-abyss-global-coverage";
@@ -32,8 +32,10 @@ export default {
       if (!body || typeof body.deviceToken !== "string" || !body.deviceToken) {
         return new Response("Missing deviceToken", { status: 400 });
       }
-      const guildId = typeof body.guildId === "number" ? body.guildId : null;
-      await upsertDevice(env, body.deviceToken, guildId);
+      const guildIds = Array.isArray(body.guildIds)
+        ? body.guildIds.filter((id) => typeof id === "number")
+        : [];
+      await upsertDevice(env, body.deviceToken, guildIds);
       return new Response("OK");
     }
 
@@ -55,7 +57,7 @@ export default {
           "If you see this, push delivery works.",
           `test-${Date.now()}`
         );
-        results.push({ token: device.token, guildId: device.guildId, ...result });
+        results.push({ token: device.token, guildIds: device.guildIds, ...result });
       }
       return new Response(JSON.stringify({ deviceCount: devices.length, results }, null, 2), {
         headers: { "content-type": "application/json" },
@@ -95,7 +97,7 @@ async function checkForNewPosts(env) {
     .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
 
   if (newPosts.length > 0) {
-    const devices = (await getDevices(env)).filter((d) => d.guildId === null);
+    const devices = (await getDevices(env)).filter((d) => d.guildIds.length === 0);
     for (const post of newPosts) {
       const title = "Venomous Abyss";
       const body = post.contentPreview || "New update";
@@ -109,11 +111,11 @@ async function checkForNewPosts(env) {
   return { ok: true, newPosts: newPosts.length };
 }
 
-/// Pushes to devices that picked a specific favorite guild the moment that guild's boss
-/// count increases — independent of the editorial feed, which might lag behind or never
-/// mention a given guild's kill at all.
+/// Pushes to devices that favorited a specific guild the moment that guild's boss count
+/// increases — independent of the editorial feed, which might lag behind or never mention a
+/// given guild's kill at all.
 async function checkGuildKills(env) {
-  const devices = (await getDevices(env)).filter((d) => d.guildId !== null);
+  const devices = (await getDevices(env)).filter((d) => d.guildIds.length > 0);
   if (devices.length === 0) return { ok: true, watchedDevices: 0 };
 
   const resp = await fetch(
@@ -156,7 +158,7 @@ async function checkGuildKills(env) {
 
     const boss = encounters[current.progress - 1];
     const bossName = boss ? boss.name : `boss ${current.progress}`;
-    const watchers = devices.filter((d) => String(d.guildId) === gid);
+    const watchers = devices.filter((d) => d.guildIds.some((id) => String(id) === gid));
     for (const device of watchers) {
       await sendPush(
         env,
@@ -246,26 +248,34 @@ function base64urlBytes(bytes) {
 }
 
 // ---- Device storage ----
-// { token: "<hex>", guildId: number | null } — guildId null means "all feed posts".
+// { token: "<hex>", guildIds: number[] } — an empty list means "all feed posts".
 
 async function getDevices(env) {
   const raw = await env.PUSH_KV.get(DEVICES_KEY);
-  if (raw) return JSON.parse(raw);
+  if (raw) return JSON.parse(raw).map(normalizeDevice);
 
-  // Fall back to the flat token-array format used before per-guild notifications existed.
-  // Never written again — the first re-registration migrates a device to the new key.
+  // Fall back to the flat token-array format used before any notification preferences
+  // existed. Never written again — the first re-registration migrates a device to the
+  // current key/shape.
   const legacyRaw = await env.PUSH_KV.get(LEGACY_TOKENS_KEY);
   if (!legacyRaw) return [];
-  return JSON.parse(legacyRaw).map((token) => ({ token, guildId: null }));
+  return JSON.parse(legacyRaw).map((token) => ({ token, guildIds: [] }));
 }
 
-async function upsertDevice(env, token, guildId) {
+// Devices stored under the single-guildId schema (before multi-select) still have a
+// `guildId: number | null` field instead of `guildIds` — normalize on read.
+function normalizeDevice(device) {
+  if (Array.isArray(device.guildIds)) return device;
+  return { token: device.token, guildIds: typeof device.guildId === "number" ? [device.guildId] : [] };
+}
+
+async function upsertDevice(env, token, guildIds) {
   const devices = await getDevices(env);
   const existing = devices.find((d) => d.token === token);
   if (existing) {
-    existing.guildId = guildId;
+    existing.guildIds = guildIds;
   } else {
-    devices.push({ token, guildId });
+    devices.push({ token, guildIds });
   }
   await env.PUSH_KV.put(DEVICES_KEY, JSON.stringify(devices));
 }
