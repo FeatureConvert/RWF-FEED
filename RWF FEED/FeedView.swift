@@ -72,20 +72,22 @@ struct ScreenHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(Theme.screenTitle)
-                    .foregroundStyle(Theme.textPrimary)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(title)
+                        .font(Theme.screenTitle)
+                        .foregroundStyle(Theme.textPrimary)
+                    Link(destination: URL(string: "https://raider.io")!) {
+                        Text("Feed by Raider.IO")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
                 if let lastUpdated {
                     TimelineView(.periodic(from: lastUpdated, by: 5)) { context in
                         Text("Updated \(RelativeTime.short(from: lastUpdated, to: context.date))")
                     }
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textSecondary)
-                }
-                Link(destination: URL(string: "https://raider.io")!) {
-                    Text("© Feed by Raider.IO")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Theme.textSecondary)
                 }
             }
             Spacer()
