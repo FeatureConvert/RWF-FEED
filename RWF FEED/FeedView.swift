@@ -82,6 +82,11 @@ struct ScreenHeader: View {
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textSecondary)
                 }
+                Link(destination: URL(string: "https://raider.io")!) {
+                    Text("© Feed by Raider.IO")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
             Spacer()
             if isLoading {
