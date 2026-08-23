@@ -67,20 +67,27 @@ struct NewsArticleRow: View {
         Link(destination: article.link) {
             VStack(alignment: .leading, spacing: Theme.cardRowGap) {
                 if let imageURL = article.imageURL {
-                    AsyncImage(url: imageURL) { phase in
-                        if let image = phase.image {
-                            // .scaledToFill() (not an overridden .aspectRatio) preserves the
-                            // image's own proportions and crops to the frame below, rather than
-                            // stretching the pixels to force a 16:9 shape.
-                            image.resizable().scaledToFill()
-                        } else {
-                            Color.clear
+                    // GeometryReader pins the image to a concrete, finite width — a bare
+                    // .frame(maxWidth: .infinity) still lets .scaledToFill() propose an
+                    // unbounded width for a very wide source image, which balloons the whole
+                    // card (and row) out past the screen instead of just the image getting
+                    // clipped to it.
+                    GeometryReader { geo in
+                        AsyncImage(url: imageURL) { phase in
+                            if let image = phase.image {
+                                // .scaledToFill() (not an overridden .aspectRatio) preserves
+                                // the image's own proportions and crops to the frame, rather
+                                // than stretching the pixels to force a 16:9 shape.
+                                image.resizable().scaledToFill()
+                            } else {
+                                Color.clear
+                            }
                         }
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
                     }
-                    .frame(maxWidth: .infinity)
                     .frame(height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .clipped()
                 }
 
                 Text(article.title)
