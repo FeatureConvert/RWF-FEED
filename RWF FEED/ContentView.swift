@@ -21,6 +21,9 @@ struct ContentView: View {
 
             BossBreakdownView()
                 .tabItem { Label("Bosses", systemImage: "chart.bar.fill") }
+
+            HeartbreakView()
+                .tabItem { Label("Heartbreak", systemImage: "heart.slash.fill") }
         }
         .tint(Theme.accent)
     }

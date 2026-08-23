@@ -198,4 +198,22 @@ extension RaidInfo {
             .sorted { $0.ordinal < $1.ordinal }
             .map { boss in BossSummary(boss: boss, worldFirst: worldFirstBySlug[boss.slug], bestPull: bestPullBySlug[boss.slug]) }
     }
+
+    /// Every guild's best pull on a boss they haven't killed yet, across the whole raid (not
+    /// just each boss's single frontrunner) — sorted closest-to-a-kill first. This is only
+    /// possible because raid-rankings carries live percent data for every encounter a guild
+    /// has attempted, not just their current one.
+    func closeCalls(rankings: [RaidRankingEntry]) -> [CloseCall] {
+        let encounterBySlug = Dictionary(uniqueKeysWithValues: encounters.map { ($0.slug, $0) })
+
+        var calls: [CloseCall] = []
+        for entry in rankings {
+            for pull in entry.encountersPulled where !pull.isDefeated {
+                guard let percent = pull.bestPercent, let pullCount = pull.numPulls,
+                      let boss = encounterBySlug[pull.slug] else { continue }
+                calls.append(CloseCall(guild: entry.guild, boss: boss, percent: percent, pullCount: pullCount))
+            }
+        }
+        return calls.sorted { $0.percent < $1.percent }
+    }
 }

@@ -238,3 +238,14 @@ struct BossSummary: Identifiable {
 
     var id: Int { boss.id }
 }
+
+// MARK: - Derived close call (one entry per guild's best not-yet-killed pull, across every boss)
+
+struct CloseCall: Identifiable {
+    let guild: RaceGuild
+    let boss: Encounter
+    let percent: Double
+    let pullCount: Int
+
+    var id: String { "\(guild.id)-\(boss.id)" }
+}
