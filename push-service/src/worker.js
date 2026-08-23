@@ -137,9 +137,10 @@ async function checkForNewPosts(env) {
   return { ok: true, newPosts: newPosts.length };
 }
 
-/// "Major Heartbreaker" pushes: a guild pulling a not-yet-killed boss down under
-/// HEARTBREAK_THRESHOLD_PERCENT remaining health — the same close-call signal as the app's
-/// Heartbreak tab, but pushed the moment it happens instead of requiring the tab to be open.
+/// "Major Heartbreaker" pushes: a guild pulling a globally-unclaimed boss (nobody has killed
+/// it yet, not just this guild) down under HEARTBREAK_THRESHOLD_PERCENT remaining health —
+/// the same close-call signal as the app's Heartbreak tab, but pushed the moment it happens
+/// instead of requiring the tab to be open.
 ///
 /// Only pushes on a new record (this guild's lowest-ever percent on this boss) so a guild
 /// stuck wiping around the same percent for an hour doesn't get a push every single minute.
@@ -163,6 +164,13 @@ async function checkHeartbreaks(env) {
   const rankData = await rankResp.json();
   const rankings = rankData.raidRankings || [];
 
+  // A boss stops being a "close call" the moment any guild claims it, even for a guild that
+  // personally hasn't killed it yet — the race for that boss is over.
+  const claimedSlugs = new Set();
+  for (const entry of rankings) {
+    for (const defeat of entry.encountersDefeated || []) claimedSlugs.add(defeat.slug);
+  }
+
   const bestRaw = await env.PUSH_KV.get(HEARTBREAK_BEST_KEY);
   const isFirstRun = bestRaw === null;
   const best = isFirstRun ? {} : JSON.parse(bestRaw);
@@ -171,7 +179,7 @@ async function checkHeartbreaks(env) {
   let pushCount = 0;
   for (const entry of rankings) {
     for (const pull of entry.encountersPulled || []) {
-      if (pull.isDefeated) continue;
+      if (pull.isDefeated || claimedSlugs.has(pull.slug)) continue;
       if (typeof pull.bestPercent !== "number" || pull.bestPercent >= HEARTBREAK_THRESHOLD_PERCENT) continue;
 
       const key = `${entry.guild.id}-${pull.slug}`;
