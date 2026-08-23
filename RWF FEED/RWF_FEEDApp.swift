@@ -14,6 +14,12 @@ struct RWF_FEEDApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .opensLinksInApp()
+                .onAppear {
+                    // The window doesn't exist yet at AppearanceSettings.init() time, so the
+                    // persisted mode needs to be (re-)applied once a window actually exists.
+                    AppearanceSettings.shared.applyToWindows()
+                }
         }
     }
 }
