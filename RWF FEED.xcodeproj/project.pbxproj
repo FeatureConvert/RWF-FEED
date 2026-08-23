@@ -10,6 +10,7 @@
 		2E5BB0767CBEDA47DCA898D8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4AC416F02B6E09B87A86311 /* Foundation.framework */; };
 		36A3B8B2E755F9AF558D55C4 /* RWFFeedWidgetEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */; };
 		3A2A921019DD84C01FBC333D /* WatchContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AECB949A34106095408BC4 /* WatchContentView.swift */; };
+		462BAEFFAAF49F4A6B5D352F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3E21DE1D5BB5654E18A7C8CB /* Assets.xcassets */; };
 		5137D7B23A02F58B7942637A /* ComplicationEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6C9D612497EEAE9676A946 /* ComplicationEntryView.swift */; };
 		5BA2B3C00596996497993CC6 /* RWFFeedWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E94B082E1472499040692FA7 /* RWFFeedWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		5E3B30EF8F23ABF764C6A12E /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 18F42ADCDDA7E5EAEDCD036B /* SwiftUI.framework */; };
@@ -102,6 +103,7 @@
 		36F74ED266B4954D24630CCB /* RWFFeedWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWidgetBundle.swift; sourceTree = "<group>"; };
 		37F57A7D0CB23310DDBBFA27 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
 		3CF562AB396589F3841C0241 /* RWFFeedWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RWFFeedWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3E21DE1D5BB5654E18A7C8CB /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		41F8DFD60407DF3638828304 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4AC6475E50987146655C91CE /* RWFFeedWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RWFFeedWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C6C9D612497EEAE9676A946 /* ComplicationEntryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ComplicationEntryView.swift; sourceTree = "<group>"; };
@@ -223,6 +225,7 @@
 				C77DA0A1270484D9E8872BDC /* RWFFeedWatchApp.swift */,
 				B3AECB949A34106095408BC4 /* WatchContentView.swift */,
 				E0FADB28DDB6D9C003B01D7B /* Info.plist */,
+				3E21DE1D5BB5654E18A7C8CB /* Assets.xcassets */,
 			);
 			name = RWFFeedWatch;
 			path = RWFFeedWatch;
@@ -404,6 +407,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				462BAEFFAAF49F4A6B5D352F /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
