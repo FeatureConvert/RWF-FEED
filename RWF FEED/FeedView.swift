@@ -8,6 +8,11 @@ import SwiftUI
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
     @State private var showingSettings = false
+    /// Whether this is the currently-selected tab. ContentView keeps every visited tab
+    /// mounted (just visually swapped) rather than tearing it down, so `.onDisappear` never
+    /// fires — polling has to be paused/resumed off this instead, or every visited tab polls
+    /// forever in the background regardless of which one is actually on screen.
+    var isActive: Bool = true
 
     var body: some View {
         NavigationStack {
@@ -37,6 +42,13 @@ struct FeedView: View {
                             }
                             .padding(.horizontal, Theme.screenEdgeMargin)
                             .padding(.vertical, Theme.cardGap / 2)
+                            // Capped and centered rather than stretching edge-to-edge — in
+                            // landscape (or on iPad) a full-bleed single column makes for
+                            // uncomfortably long text lines and stretches the embedded
+                            // WKWebView clips/images wide. Portrait widths are already well
+                            // under 700pt, so this is a no-op there.
+                            .frame(maxWidth: 700)
+                            .frame(maxWidth: .infinity)
                         }
                         .scrollContentBackground(.hidden)
                         .refreshable { await viewModel.refresh() }
@@ -48,10 +60,10 @@ struct FeedView: View {
         }
         .tint(Theme.accent)
         .task {
-            viewModel.startPolling()
+            if isActive { viewModel.startPolling() }
         }
-        .onDisappear {
-            viewModel.stopPolling()
+        .onChange(of: isActive) { _, active in
+            if active { viewModel.startPolling() } else { viewModel.stopPolling() }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()

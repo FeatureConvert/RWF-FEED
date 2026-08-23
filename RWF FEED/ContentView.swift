@@ -23,12 +23,12 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                if visitedTabs.contains(.feed) { tab(.feed) { FeedView() } }
-                if visitedTabs.contains(.tracker) { tab(.tracker) { TrackerView() } }
-                if visitedTabs.contains(.kills) { tab(.kills) { KillFeedView() } }
-                if visitedTabs.contains(.bosses) { tab(.bosses) { BossBreakdownView() } }
-                if visitedTabs.contains(.heartbreak) { tab(.heartbreak) { HeartbreakView() } }
-                if visitedTabs.contains(.news) { tab(.news) { NewsView() } }
+                if visitedTabs.contains(.feed) { tab(.feed) { FeedView(isActive: selectedTab == .feed) } }
+                if visitedTabs.contains(.tracker) { tab(.tracker) { TrackerView(isActive: selectedTab == .tracker) } }
+                if visitedTabs.contains(.kills) { tab(.kills) { KillFeedView(isActive: selectedTab == .kills) } }
+                if visitedTabs.contains(.bosses) { tab(.bosses) { BossBreakdownView(isActive: selectedTab == .bosses) } }
+                if visitedTabs.contains(.heartbreak) { tab(.heartbreak) { HeartbreakView(isActive: selectedTab == .heartbreak) } }
+                if visitedTabs.contains(.news) { tab(.news) { NewsView(isActive: selectedTab == .news) } }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 

@@ -11,6 +11,9 @@ import SwiftUI
 struct KillFeedView: View {
     @StateObject private var viewModel = KillFeedViewModel()
     @State private var showingSettings = false
+    /// See FeedView's isActive doc comment — ContentView keeps every visited tab mounted, so
+    /// polling has to be paused/resumed off this instead of .onDisappear (which never fires).
+    var isActive: Bool = true
 
     var body: some View {
         NavigationStack {
@@ -43,10 +46,10 @@ struct KillFeedView: View {
         }
         .tint(Theme.accent)
         .task {
-            viewModel.startPolling()
+            if isActive { viewModel.startPolling() }
         }
-        .onDisappear {
-            viewModel.stopPolling()
+        .onChange(of: isActive) { _, active in
+            if active { viewModel.startPolling() } else { viewModel.stopPolling() }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
