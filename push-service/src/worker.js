@@ -24,10 +24,12 @@ const LAST_SEEN_KEY = "lastSeenPostId";
 const DEVICES_KEY = "devices";
 const LEGACY_TOKENS_KEY = "deviceTokens";
 const GUILD_PROGRESS_KEY = "guildProgress";
+const HEARTBREAK_BEST_KEY = "heartbreakBest";
+const HEARTBREAK_THRESHOLD_PERCENT = 5.01;
 
 export default {
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkGuildKills(env)]));
+    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkGuildKills(env), checkHeartbreaks(env)]));
   },
 
   async fetch(request, env) {
@@ -47,8 +49,12 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/check") {
       if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
-      const [posts, kills] = await Promise.all([checkForNewPosts(env), checkGuildKills(env)]);
-      return new Response(JSON.stringify({ posts, kills }), {
+      const [posts, kills, heartbreaks] = await Promise.all([
+        checkForNewPosts(env),
+        checkGuildKills(env),
+        checkHeartbreaks(env),
+      ]);
+      return new Response(JSON.stringify({ posts, kills, heartbreaks }), {
         headers: { "content-type": "application/json" },
       });
     }
@@ -208,6 +214,72 @@ async function checkGuildKills(env) {
   }
 
   await env.PUSH_KV.put(GUILD_PROGRESS_KEY, JSON.stringify(nextProgress));
+  return { ok: true, watchedDevices: devices.length, pushCount };
+}
+
+/// "Major Heartbreaker" pushes: a guild pulling a not-yet-killed boss down under
+/// HEARTBREAK_THRESHOLD_PERCENT remaining health — the same close-call signal as the app's
+/// Heartbreak tab, but pushed the moment it happens instead of requiring the tab to be open.
+/// Goes to every "all feed posts" device (guildIds:[]), same audience as checkForNewPosts —
+/// a global near-miss is race news regardless of which guild someone favorited.
+///
+/// Only pushes on a new record (this guild's lowest-ever percent on this boss) so a guild
+/// stuck wiping around the same percent for an hour doesn't get a push every single minute.
+async function checkHeartbreaks(env) {
+  const devices = (await getDevices(env)).filter((d) => d.guildIds.length === 0);
+  if (devices.length === 0) return { ok: true, watchedDevices: 0 };
+
+  const [raceResp, rankResp] = await Promise.all([
+    fetch(`https://raider.io/api/raids/raid-race?raid=${RAID_SLUG}&region=world&difficulty=mythic`),
+    fetch(`https://raider.io/api/v1/raiding/raid-rankings?raid=${RAID_SLUG}&difficulty=mythic&region=world`),
+  ]);
+  if (!raceResp.ok) return { ok: false, status: raceResp.status };
+  if (!rankResp.ok) return { ok: false, status: rankResp.status };
+
+  const raceData = await raceResp.json();
+  const encounterBySlug = {};
+  for (const encounter of raceData.worldFirstTracker?.raid?.encounters || []) {
+    encounterBySlug[encounter.slug] = encounter;
+  }
+
+  const rankData = await rankResp.json();
+  const rankings = rankData.raidRankings || [];
+
+  const bestRaw = await env.PUSH_KV.get(HEARTBREAK_BEST_KEY);
+  const isFirstRun = bestRaw === null;
+  const best = isFirstRun ? {} : JSON.parse(bestRaw);
+  const nextBest = { ...best };
+
+  let pushCount = 0;
+  for (const entry of rankings) {
+    for (const pull of entry.encountersPulled || []) {
+      if (pull.isDefeated) continue;
+      if (typeof pull.bestPercent !== "number" || pull.bestPercent >= HEARTBREAK_THRESHOLD_PERCENT) continue;
+
+      const key = `${entry.guild.id}-${pull.slug}`;
+      const previousBest = best[key];
+      const isNewRecord = previousBest === undefined || pull.bestPercent < previousBest;
+      if (isNewRecord) nextBest[key] = pull.bestPercent;
+      // First run ever: record the baseline (so re-notifying doesn't depend on someone
+      // happening to improve past a pull we never saw) without pushing for every close call
+      // already in progress the moment this ships.
+      if (!isNewRecord || isFirstRun) continue;
+
+      const bossName = encounterBySlug[pull.slug]?.name ?? pull.slug;
+      for (const device of devices) {
+        await sendPush(
+          env,
+          device.token,
+          "Major Heartbreaker",
+          `${entry.guild.displayName} wipes on ${bossName} at ${pull.bestPercent.toFixed(2)}%`,
+          `heartbreak-${key}-${Math.round(pull.bestPercent * 100)}`
+        );
+        pushCount++;
+      }
+    }
+  }
+
+  await env.PUSH_KV.put(HEARTBREAK_BEST_KEY, JSON.stringify(nextBest));
   return { ok: true, watchedDevices: devices.length, pushCount };
 }
 
