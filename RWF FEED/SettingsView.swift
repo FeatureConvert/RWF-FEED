@@ -16,6 +16,12 @@ struct SettingsView: View {
     @ObservedObject private var notificationPreferences = NotificationPreferences.shared
     @ObservedObject private var defaultTabSettings = DefaultTabSettings.shared
     @State private var showingMailCompose = false
+    /// The slider's live value while dragging. Bound separately from
+    /// notificationPreferences.heartbreakThresholdPercent, whose didSet fires a network POST —
+    /// binding the slider straight to that would fire one POST per drag tick, and since
+    /// arrival order isn't guaranteed, the last request to *land* (not the value released)
+    /// wins server-side. Only committed to the real preference (and thus sent) on drag end.
+    @State private var draftThreshold: Double = NotificationPreferences.shared.heartbreakThresholdPercent
     private let funFact = WoWFunFacts.random()
 
     var body: some View {
@@ -82,12 +88,19 @@ struct SettingsView: View {
                             Text("Close Call Threshold")
                                 .foregroundStyle(Theme.textPrimary)
                             Spacer()
-                            Text(String(format: "%.1f%%", notificationPreferences.heartbreakThresholdPercent))
+                            Text(String(format: "%.1f%%", draftThreshold))
                                 .foregroundStyle(Theme.textSecondary)
                                 .monospacedDigit()
                         }
-                        Slider(value: $notificationPreferences.heartbreakThresholdPercent, in: 1...25, step: 0.5)
-                            .tint(Theme.accent)
+                        Slider(
+                            value: $draftThreshold, in: 1...25, step: 0.5,
+                            onEditingChanged: { isEditing in
+                                if !isEditing {
+                                    notificationPreferences.heartbreakThresholdPercent = draftThreshold
+                                }
+                            }
+                        )
+                        .tint(Theme.accent)
                     }
                     .padding(.vertical, 2)
 
