@@ -39,10 +39,21 @@ private func percentText(_ percent: Double?) -> String {
 }
 
 /// "Kill progress" — bestPercent is remaining boss health (lower is closer to a kill), so
-/// progress toward the kill is the inverse.
+/// progress toward the kill is the inverse. Used for the circular ring, where filling up as
+/// you approach the kill matches how ring gauges read everywhere else (e.g. Activity rings).
 private func killProgress(_ percent: Double?) -> Double {
     guard let percent else { return 0 }
     return max(0, min(100, 100 - percent)) / 100
+}
+
+/// Remaining boss health as a fraction, unlike killProgress above — this one is for the
+/// rectangular complication's linear bar, which reads as a health bar: full at fight start,
+/// draining down (its filled/leading edge receding from right toward left) as the boss takes
+/// damage, empty at 0% health. Left = 0% is Gauge's own default fill origin, so no custom
+/// drawing is needed — just feed it the health fraction directly instead of the inverted one.
+private func healthFraction(_ percent: Double?) -> Double {
+    guard let percent else { return 1 }
+    return max(0, min(100, percent)) / 100
 }
 
 struct CircularComplication: View {
@@ -77,7 +88,7 @@ struct RectangularComplication: View {
                 .foregroundStyle(rwfAccent)
                 .lineLimit(1)
 
-            Gauge(value: killProgress(boss?.bestPercent)) {
+            Gauge(value: healthFraction(boss?.bestPercent)) {
                 EmptyView()
             }
             .gaugeStyle(.accessoryLinear)
