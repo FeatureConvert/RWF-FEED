@@ -85,8 +85,12 @@ struct NotificationSettingsView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let tracker = try await RaiderIOService.shared.fetchTracker()
-            guilds = tracker.standings().map(\.guild).sorted { $0.displayName < $1.displayName }
+            // raid-rankings, not the boss-progress timeline: the timeline only lists guilds
+            // that have at least one kill, which leaves out top guilds (Echo, Liquid, Method…)
+            // early in the race before they've killed anything yet. raid-rankings ranks
+            // every tracked guild regardless of progress, so this list is complete and
+            // already ordered by current standing.
+            guilds = try await RaiderIOService.shared.fetchRaidRankings().map(\.guild)
             errorMessage = nil
         } catch {
             errorMessage = "Couldn't load guilds."

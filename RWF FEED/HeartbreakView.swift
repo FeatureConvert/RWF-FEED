@@ -22,6 +22,19 @@ struct HeartbreakView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if viewModel.closeCalls.isEmpty, let message = viewModel.errorMessage {
                         ContentUnavailableView(message, systemImage: "wifi.slash")
+                    } else if viewModel.closeCalls.isEmpty {
+                        List {
+                            ContentUnavailableView(
+                                "No Close Calls Right Now",
+                                systemImage: "heart.slash",
+                                description: Text("Nobody's under 10% on a boss they haven't killed yet.")
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .refreshable { await viewModel.refresh() }
                     } else {
                         List(Array(viewModel.closeCalls.enumerated()), id: \.element.id) { index, call in
                             CloseCallRow(call: call, isLast: index == viewModel.closeCalls.count - 1)
