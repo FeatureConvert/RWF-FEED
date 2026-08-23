@@ -4,17 +4,17 @@
 //
 
 import SwiftUI
-import MessageUI
 
 struct FeedView: View {
     @StateObject private var viewModel = FeedViewModel()
-    @State private var showingMailCompose = false
-    @Environment(\.openURL) private var openURL
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading, onFeedbackTapped: sendFeedback)
+                ScreenHeader(title: "Venomous Abyss", isLoading: viewModel.isLoading) {
+                    showingSettings = true
+                }
 
                 Group {
                     if viewModel.posts.isEmpty && viewModel.isLoading {
@@ -53,16 +53,8 @@ struct FeedView: View {
         .onDisappear {
             viewModel.stopPolling()
         }
-        .sheet(isPresented: $showingMailCompose) {
-            MailComposeView()
-        }
-    }
-
-    private func sendFeedback() {
-        if MFMailComposeViewController.canSendMail() {
-            showingMailCompose = true
-        } else if let url = FeedbackMail.mailtoURL {
-            openURL(url)
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
     }
 }
@@ -73,9 +65,9 @@ struct ScreenHeader: View {
     let title: String
     var isLoading: Bool = false
     var lastUpdated: Date? = nil
-    /// Shows an envelope button that calls this when tapped — used on the Feed tab to send
-    /// bug/feature feedback. Omitted (nil) everywhere else.
-    var onFeedbackTapped: (() -> Void)? = nil
+    /// Shows a gear button that calls this when tapped — used on the Feed tab to open
+    /// Settings. Omitted (nil) everywhere else.
+    var onSettingsTapped: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -95,9 +87,9 @@ struct ScreenHeader: View {
             if isLoading {
                 ProgressView()
             }
-            if let onFeedbackTapped {
-                Button(action: onFeedbackTapped) {
-                    Image(systemName: "envelope")
+            if let onSettingsTapped {
+                Button(action: onSettingsTapped) {
+                    Image(systemName: "gearshape")
                         .foregroundStyle(Theme.textSecondary)
                 }
             }

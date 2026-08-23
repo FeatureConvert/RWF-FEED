@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @ObservedObject private var appearance = AppearanceSettings.shared
+
     var body: some View {
         TabView {
             FeedView()
@@ -26,6 +28,7 @@ struct ContentView: View {
                 .tabItem { Label("Heartbreak", systemImage: "heart.slash.fill") }
         }
         .tint(Theme.accent)
+        .preferredColorScheme(appearance.mode.colorScheme)
     }
 }
 
