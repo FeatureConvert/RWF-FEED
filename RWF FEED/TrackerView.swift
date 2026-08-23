@@ -25,6 +25,19 @@ struct TrackerView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if viewModel.standings.isEmpty, let message = viewModel.errorMessage {
                         ContentUnavailableView(message, systemImage: "wifi.slash")
+                    } else if viewModel.standings.isEmpty {
+                        List {
+                            ContentUnavailableView(
+                                "No Standings Yet",
+                                systemImage: "list.number",
+                                description: Text("Guild standings will appear once the race begins.")
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .refreshable { await viewModel.refresh() }
                     } else {
                         List(Array(viewModel.standings.enumerated()), id: \.element.id) { index, standing in
                             GuildStandingRow(

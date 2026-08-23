@@ -49,16 +49,22 @@ enough to be worth the complexity) — it's an all-or-nothing category, same as
   Upserts by token — a device that re-registers gets its existing entry's preferences
   updated, not a duplicate. A `BadDeviceToken`/410 response from APNs on send removes
   the device automatically (e.g. after a reinstall).
-- **`GET /check?secret=<value>`**: manually triggers all three checks above. Returns
+- **`GET /check`**: manually triggers all three checks above. Returns
   `{ posts, raiderioEvents, wowheadNews }`.
-- **`GET /test-push?secret=<value>`**: sends a fixed test notification directly to every
+- **`GET /test-push`**: sends a fixed test notification directly to every
   registered device (ignoring all preference flags), bypassing all diffs entirely.
   Useful for confirming delivery without needing a real new post/close-call/kill/article,
   or fighting KV's eventual consistency (writes can take up to ~60s to become visible to
   the Worker's own reads).
 
-`/check` and `/test-push` require the `ADMIN_SECRET` Worker secret as a `secret` query
-param — without it they 401. `/register` has no such gate — it only ever touches the
+```bash
+curl -H "X-Admin-Secret: <value>" "https://rwf-feed-push.rwf-feed.workers.dev/check"
+curl -H "X-Admin-Secret: <value>" "https://rwf-feed-push.rwf-feed.workers.dev/test-push"
+```
+
+`/check` and `/test-push` require the `ADMIN_SECRET` Worker secret as an `X-Admin-Secret`
+header — without it they 401. A header instead of a `?secret=` query param, since query
+strings end up verbatim in Cloudflare's request logs and browser history. `/register` has no such gate — it only ever touches the
 caller's own device token — but it does validate `deviceToken` (must match APNs' 64-hex-char
 shape) and caps total registered devices at `MAX_DEVICES` (200), returning 400/429
 respectively; `heartbreakThresholdPercent` is clamped to

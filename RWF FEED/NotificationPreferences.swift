@@ -21,7 +21,10 @@ import Combine
 final class NotificationPreferences: ObservableObject {
     static let shared = NotificationPreferences()
 
-    static let defaultHeartbreakThresholdPercent: Double = 5.01
+    /// Lands exactly on the Settings slider's 0.5-step grid — an off-grid default (e.g. 5.01)
+    /// would silently snap to the nearest step the instant a user first touches the slider,
+    /// changing their stored preference without any interaction they'd recognize as "changing" it.
+    static let defaultHeartbreakThresholdPercent: Double = 5.0
 
     private static let raiderioKey = "NotificationPreferences.raiderioEnabled"
     private static let wowheadKey = "NotificationPreferences.wowheadEnabled"

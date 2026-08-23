@@ -165,7 +165,7 @@ struct InlineBossView: View {
         } else if let boss {
             Text("Boss \(boss.bossOrdinal): \(boss.bossName)")
         } else {
-            Text("RWF Feed")
+            Text("Azeroth Watch")
         }
     }
 }
@@ -189,7 +189,7 @@ struct RectangularBossView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(boss?.bossName ?? "RWF Feed")
+            Text(boss?.bossName ?? "Azeroth Watch")
                 .font(.headline)
                 .lineLimit(1)
             if let guild = boss?.bestGuildName {

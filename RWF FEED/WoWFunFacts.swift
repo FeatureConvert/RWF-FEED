@@ -19,7 +19,7 @@ enum WoWFunFacts {
         "Naxxramas debuted in 2006 as a 40-player raid, then was remade as a starter raid for Wrath of the Lich King in 2008.",
         "Flying mounts didn't exist until The Burning Crusade introduced them for Outland in 2007.",
         "Onyxia's Lair became famous for the server-wide message announcing the first guild to down her.",
-        "The \"Leeroy Jenkins\" video — one of gaming's most iconic memes — was recorded during a Molten Core raid attempt.",
+        "The \"Leeroy Jenkins\" video — one of gaming's most iconic memes — was recorded during an Upper Blackrock Spire attempt, not Molten Core as often misremembered.",
         "Blizzard doesn't run an official \"Race to World First\" — it's entirely community-organized and tracked by sites like raider.io.",
         "Pandaren became a playable race in Mists of Pandaria, alongside the Monk class.",
         "The Burning Crusade, WoW's first expansion, raised the level cap from 60 to 70.",

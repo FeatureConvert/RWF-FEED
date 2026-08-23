@@ -32,6 +32,16 @@ struct NewsView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if viewModel.articles.isEmpty, let message = viewModel.errorMessage {
                         ContentUnavailableView(message, systemImage: "wifi.slash")
+                    } else if viewModel.articles.isEmpty {
+                        ScrollView {
+                            ContentUnavailableView(
+                                "No News Yet",
+                                systemImage: "newspaper",
+                                description: Text("WoW news articles will appear here as Wowhead publishes them.")
+                            )
+                            .frame(maxWidth: .infinity, minHeight: 400)
+                        }
+                        .refreshable { await viewModel.refresh() }
                     } else {
                         ScrollView {
                             LazyVStack(spacing: Theme.cardGap) {

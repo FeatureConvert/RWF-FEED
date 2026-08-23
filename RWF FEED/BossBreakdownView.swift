@@ -30,6 +30,19 @@ struct BossBreakdownView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if viewModel.summaries.isEmpty, let message = viewModel.errorMessage {
                         ContentUnavailableView(message, systemImage: "wifi.slash")
+                    } else if viewModel.summaries.isEmpty {
+                        List {
+                            ContentUnavailableView(
+                                "No Bosses Yet",
+                                systemImage: "chart.bar",
+                                description: Text("The boss list will appear once the raid opens.")
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .refreshable { await viewModel.refresh() }
                     } else {
                         List(Array(viewModel.summaries.enumerated()), id: \.element.id) { index, summary in
                             BossSummaryRow(summary: summary, isLast: index == viewModel.summaries.count - 1)

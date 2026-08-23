@@ -27,6 +27,16 @@ struct FeedView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if viewModel.posts.isEmpty, let message = viewModel.errorMessage {
                         ContentUnavailableView(message, systemImage: "wifi.slash")
+                    } else if viewModel.posts.isEmpty {
+                        ScrollView {
+                            ContentUnavailableView(
+                                "No Coverage Yet",
+                                systemImage: "bolt",
+                                description: Text("Live coverage posts will appear here once the race is underway.")
+                            )
+                            .frame(maxWidth: .infinity, minHeight: 400)
+                        }
+                        .refreshable { await viewModel.refresh() }
                     } else {
                         // A plain ScrollView instead of List: rows contain WKWebView embeds
                         // that resize themselves asynchronously once their content loads,

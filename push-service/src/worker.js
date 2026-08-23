@@ -21,11 +21,11 @@
 //   POST /register  { "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool,
 //                      "spoilerFreeEnabled": bool, "heartbreakThresholdPercent": number,
 //                      "notifyNonWorldFirstHeartbreaks": bool }
-//   GET  /check?secret=<value>  — manually trigger a poll, for testing
-//   GET  /test-push?secret=<value> — send a placeholder push to every registered device
+//   GET  /check  — manually trigger a poll, for testing (requires X-Admin-Secret header)
+//   GET  /test-push — send a placeholder push to every registered device (same header)
 //
-// /check and /test-push require ADMIN_SECRET (a Worker secret, see README) as a `secret`
-// query param — without it, anyone who finds the URL could enumerate every registered
+// /check and /test-push require ADMIN_SECRET (a Worker secret, see README) as an
+// `X-Admin-Secret` header — without it, anyone who finds the URL could enumerate every registered
 // device token from /test-push's response, or spam real polls via /check. /register has no
 // such gate — it only ever adds/updates one device's own token, nothing to protect — but it
 // does validate deviceToken's shape (APNs tokens are 64 hex chars) and cap total devices at
@@ -38,7 +38,9 @@ const LAST_SEEN_KEY = "lastSeenPostId";
 const DEVICES_KEY = "devices";
 const LEGACY_TOKENS_KEY = "deviceTokens";
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
-const HEARTBREAK_DEFAULT_THRESHOLD_PERCENT = 5.01;
+// Matches NotificationPreferences.defaultHeartbreakThresholdPercent on the client — kept as a
+// clean 5.0 so it lands on the Settings slider's 0.5-step grid rather than snapping on first touch.
+const HEARTBREAK_DEFAULT_THRESHOLD_PERCENT = 5.0;
 const HEARTBREAK_MIN_THRESHOLD_PERCENT = 1;
 const HEARTBREAK_MAX_THRESHOLD_PERCENT = 25;
 const WORLD_FIRST_SEEN_KEY = "worldFirstKillsSeen";
@@ -76,7 +78,7 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/check") {
-      if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
       const [posts, raiderioEvents, wowheadNews] = await Promise.all([
         checkForNewPosts(env),
         checkRaiderIOEvents(env),
@@ -88,7 +90,7 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/test-push") {
-      if (!isAuthorized(url, env)) return new Response("Unauthorized", { status: 401 });
+      if (!isAuthorized(request, env)) return new Response("Unauthorized", { status: 401 });
       const devices = await getDevices(env);
       const results = [];
       for (const device of devices) {
@@ -110,8 +112,10 @@ export default {
   },
 };
 
-function isAuthorized(url, env) {
-  const provided = url.searchParams.get("secret");
+// A header, not a `?secret=` query param — query strings end up in Cloudflare's request logs
+// and browser history verbatim, which a bearer-style header avoids.
+function isAuthorized(request, env) {
+  const provided = request.headers.get("X-Admin-Secret");
   return typeof env.ADMIN_SECRET === "string" && env.ADMIN_SECRET.length > 0 && provided === env.ADMIN_SECRET;
 }
 

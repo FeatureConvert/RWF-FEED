@@ -107,7 +107,7 @@ struct RectangularComplication: View {
             Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8)")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
-            Text(boss?.bossName ?? "RWF Feed")
+            Text(boss?.bossName ?? "Azeroth Watch")
                 .font(.headline)
                 .foregroundStyle(rwfAccent)
                 .lineLimit(1)
@@ -135,7 +135,7 @@ struct InlineComplication: View {
         } else if let boss {
             Text("Boss \(boss.bossOrdinal): \(boss.bossName)")
         } else {
-            Text("RWF Feed")
+            Text("Azeroth Watch")
         }
     }
 }

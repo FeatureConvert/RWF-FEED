@@ -28,6 +28,19 @@ struct KillFeedView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if viewModel.events.isEmpty, let message = viewModel.errorMessage {
                         ContentUnavailableView(message, systemImage: "wifi.slash")
+                    } else if viewModel.events.isEmpty {
+                        List {
+                            ContentUnavailableView(
+                                "No Kills Yet",
+                                systemImage: "checkmark.seal",
+                                description: Text("Boss kills will show up here as guilds land them.")
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .refreshable { await viewModel.refresh() }
                     } else {
                         List(Array(viewModel.events.enumerated()), id: \.element.id) { index, event in
                             KillFeedRow(event: event, isLast: index == viewModel.events.count - 1)

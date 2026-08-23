@@ -87,11 +87,24 @@ enum WowheadFeedParser {
                     guid: trimmedGuid.isEmpty ? trimmedLink : trimmedGuid,
                     title: trimmedTitle.strippingHTMLTags(),
                     link: url,
-                    summary: summaryText.strippingHTMLTags(),
+                    summary: summaryText.strippingHTMLTags().strippingWowheadContinueReadingSuffix(),
                     imageURL: imageURLString.flatMap { URL(string: $0) },
                     publishedAt: publishedAt
                 )
             )
         }
+    }
+}
+
+private extension String {
+    /// Wowhead's RSS `<description>` always ends with a "Continue reading »" link back to the
+    /// full article. `strippingHTMLTags()` correctly removes the `<a>` markup but leaves that
+    /// link's text run directly on to the preceding sentence with no separating space (e.g.
+    /// "...high priority issue.Continue reading »") — stripped here since it's Wowhead-specific
+    /// boilerplate, not part of the actual summary.
+    func strippingWowheadContinueReadingSuffix() -> String {
+        let suffix = "Continue reading »"
+        guard hasSuffix(suffix) else { return self }
+        return String(dropLast(suffix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
