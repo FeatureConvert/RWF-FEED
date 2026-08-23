@@ -12,10 +12,13 @@ import UIKit
 struct GuildAvatar: View {
     let guild: RaceGuild
     @State private var uiImage: UIImage?
-    /// Bumping this restarts `load()` (it's keyed into the `.task(id:)` below) — used both to
-    /// retry a failed load and to refetch if `guild.logo` itself changes.
-    @State private var retryToken = 0
     private static let maxRetries = 2
+    /// Shared across every GuildAvatar instance app-wide, not per-row @State — without this,
+    /// a guild's logo re-downloads from scratch every time its row scrolls out of and back
+    /// into a List's visible region (List/SwiftUI reuse discards row @State on that boundary).
+    /// Keyed by guild.logo since that's the only thing that can actually change per guild.
+    @MainActor
+    private static var imageCache: [String: UIImage] = [:]
 
     private static let palette: [(background: Color, foreground: Color)] = [
         (Color(hex: "#5D5294"), .white),
@@ -51,7 +54,7 @@ struct GuildAvatar: View {
         }
         .frame(width: Theme.guildLogoDiameter, height: Theme.guildLogoDiameter)
         .clipShape(Circle())
-        .task(id: "\(guild.logo)#\(retryToken)") {
+        .task(id: guild.logo) {
             await load()
         }
     }
@@ -61,21 +64,30 @@ struct GuildAvatar: View {
     /// client admits image/webp support — which iOS's networking stack does by default, but
     /// AsyncImage has no way to override the request headers it sends. A custom fetch with an
     /// explicit Accept forces PNG/JPEG back, sidestepping that entirely rather than depending
-    /// on WebP decode support. Retries up to twice on any other failure (transient network
-    /// blips), since AsyncImage-style loading has no built-in retry either.
+    /// on WebP decode support.
+    ///
+    /// Checks the shared cache first, and retries (up to maxRetries, in a plain loop scoped to
+    /// this one call — not external @State) only the underlying fetch on failure, so a
+    /// transient blip on one URL can't leak retry budget onto a different URL this instance
+    /// later loads.
     private func load() async {
+        if let cached = Self.imageCache[guild.logo] {
+            uiImage = cached
+            return
+        }
         guard let url = URL(string: guild.logo) else { return }
         var request = URLRequest(url: url)
         request.setValue("image/png,image/jpeg,image/*;q=0.8", forHTTPHeaderField: "Accept")
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-        if let (data, _) = try? await URLSession.shared.data(for: request), let image = UIImage(data: data) {
-            uiImage = image
-            return
+        for attempt in 0...Self.maxRetries {
+            if let (data, _) = try? await URLSession.shared.data(for: request), let image = UIImage(data: data) {
+                Self.imageCache[guild.logo] = image
+                uiImage = image
+                return
+            }
+            guard attempt < Self.maxRetries else { return }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
         }
-        guard retryToken < Self.maxRetries else { return }
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
-        guard !Task.isCancelled else { return }
-        retryToken += 1
     }
 }
 
