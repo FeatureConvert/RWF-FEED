@@ -14,6 +14,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @ObservedObject private var appearance = AppearanceSettings.shared
     @ObservedObject private var notificationPreferences = NotificationPreferences.shared
+    @ObservedObject private var defaultTabSettings = DefaultTabSettings.shared
     @State private var showingMailCompose = false
     private let funFact = WoWFunFacts.random()
 
@@ -34,6 +35,21 @@ struct SettingsView: View {
                     Text("Appearance")
                         .foregroundStyle(Theme.textSecondary)
                 }
+
+                Section {
+                    Picker("Default Tab", selection: $defaultTabSettings.defaultTab) {
+                        ForEach(AppTab.allCases) { tab in
+                            Label(tab.title, systemImage: tab.icon).tag(tab)
+                        }
+                    }
+                } header: {
+                    Text("Startup")
+                        .foregroundStyle(Theme.textSecondary)
+                } footer: {
+                    Text("Which tab opens when you launch the app.")
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .listRowBackground(Theme.cardSurface)
 
                 Section {
                     Toggle(isOn: $notificationPreferences.raiderioEnabled) {

@@ -8,11 +8,17 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedTab: AppTab = .feed
+    @State private var selectedTab: AppTab
     /// Each tab's view (and its @StateObject view model / polling task) is created the first
     /// time it's selected, then kept alive and just visually swapped after that — matching how
     /// a real TabView behaves, rather than eagerly starting all 6 tabs' polling at launch.
-    @State private var visitedTabs: Set<AppTab> = [.feed]
+    @State private var visitedTabs: Set<AppTab>
+
+    init() {
+        let startingTab = DefaultTabSettings.shared.defaultTab
+        _selectedTab = State(initialValue: startingTab)
+        _visitedTabs = State(initialValue: [startingTab])
+    }
 
     var body: some View {
         VStack(spacing: 0) {
