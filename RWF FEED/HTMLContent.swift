@@ -10,7 +10,10 @@ import Foundation
 import UIKit
 
 enum HTMLContent {
-    /// Converts HTML to an AttributedString with clickable links, run off the main thread.
+    /// Converts HTML to an AttributedString with clickable links. Must run on the main thread
+    /// — NSAttributedString's HTML importer is main-thread-only; moving this off it broke the
+    /// Feed tab's rendering once already and had to be reverted. Callers should cache the
+    /// result per post rather than move the parse itself elsewhere (see FeedPostRow).
     static func attributedString(from html: String) -> AttributedString {
         // Strip embeds we can't render inline (iframes, images). Leave real <br>/<div>/<p>
         // tags alone and let the HTML renderer do paragraph spacing itself — pre-converting

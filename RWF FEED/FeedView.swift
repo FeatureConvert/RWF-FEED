@@ -35,20 +35,25 @@ struct FeedView: View {
                         // consistency assertion. A ScrollView/LazyVStack has no such
                         // constraint.
                         ScrollView {
-                            LazyVStack(spacing: Theme.cardGap) {
-                                ForEach(viewModel.posts) { post in
-                                    FeedPostRow(post: post)
+                            // HStack + Spacers rather than a bare .frame(maxWidth:).frame(maxWidth: .infinity)
+                            // chain — the latter left the column pinned to the leading edge and
+                            // narrower than its own cap inside a ScrollView, since nested frame
+                            // modifiers depend on an unambiguous width proposal from the parent
+                            // that a ScrollView's content slot doesn't reliably give. An HStack
+                            // gives the capped column a concrete width to fill, and two
+                            // symmetric Spacers guarantee centering regardless.
+                            HStack(spacing: 0) {
+                                Spacer(minLength: 0)
+                                LazyVStack(spacing: Theme.cardGap) {
+                                    ForEach(viewModel.posts) { post in
+                                        FeedPostRow(post: post)
+                                    }
                                 }
+                                .padding(.horizontal, Theme.screenEdgeMargin)
+                                .padding(.vertical, Theme.cardGap / 2)
+                                .frame(maxWidth: 700)
+                                Spacer(minLength: 0)
                             }
-                            .padding(.horizontal, Theme.screenEdgeMargin)
-                            .padding(.vertical, Theme.cardGap / 2)
-                            // Capped and centered rather than stretching edge-to-edge — in
-                            // landscape (or on iPad) a full-bleed single column makes for
-                            // uncomfortably long text lines and stretches the embedded
-                            // WKWebView clips/images wide. Portrait widths are already well
-                            // under 700pt, so this is a no-op there.
-                            .frame(maxWidth: 700)
-                            .frame(maxWidth: .infinity)
                         }
                         .scrollContentBackground(.hidden)
                         .refreshable { await viewModel.refresh() }
@@ -138,8 +143,14 @@ struct ScreenHeader: View {
 
 struct FeedPostRow: View {
     let post: FeedPost
-
-    private var blocks: [PostContentBlock] { PostContent.parseBlocks(from: post.content ?? "") }
+    /// Parsed once per post.id via .task below rather than recomputed on every render —
+    /// PostContent.parseBlocks() → HTMLContent.attributedString() runs NSAttributedString's
+    /// HTML importer, which is main-thread-only and not cheap; as a plain computed property it
+    /// re-ran on every SwiftUI re-render (including every 30s poll, since that replaces the
+    /// whole `posts` array). .task(id: post.id) keeps this on the main thread — this codebase
+    /// already tried moving HTML parsing off it once and had to revert the whole change, so
+    /// this is caching, not threading.
+    @State private var blocks: [PostContentBlock] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.cardRowGap) {
@@ -187,6 +198,9 @@ struct FeedPostRow: View {
         }
         .padding(Theme.cardPadding)
         .background(Theme.cardSurface, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
+        .task(id: post.id) {
+            blocks = PostContent.parseBlocks(from: post.content ?? "")
+        }
     }
 }
 
