@@ -175,30 +175,27 @@ extension WorldFirstTracker {
         return Array(sorted.prefix(limit))
     }
 
-    /// Flattens the same timeline buckets into one event per guild-kill, newest first —
-    /// a global kill feed across every guild instead of one row per guild's current standing.
-    ///
-    /// Assumes progress level N was boss N in encounter order (mythic progression in this
-    /// raid is gated, so guilds kill bosses in a fixed order) — the API only tells us a
-    /// guild reached progress N at time T, not which specific encounter that was.
-    func killFeedEvents(regionSlug: String = "world") -> [KillFeedEvent] {
-        let steps = timeline(regionSlug: regionSlug)
-        guard !steps.isEmpty else { return [] }
-        let orderedEncounters = raid.encounters.sorted { $0.ordinal < $1.ordinal }
+    /// One event per guild-kill, newest first — a global kill feed across every guild, sourced
+    /// from raid-rankings rather than the timeline (see `standings(rankings:)` above for why:
+    /// raid-race's own timeline has been observed missing guilds entirely for extended
+    /// stretches of the race). Each `encountersDefeated` entry already carries its own boss
+    /// slug and kill timestamp directly, so unlike the old timeline-based version, this doesn't
+    /// need to assume progress level N was boss N in encounter order.
+    func killFeedEvents(rankings: [RaidRankingEntry]) -> [KillFeedEvent] {
+        let encounterBySlug = Dictionary(uniqueKeysWithValues: raid.encounters.map { ($0.slug, $0) })
+
+        var killsBySlug: [String: [(guild: RaceGuild, defeatedAt: Date)]] = [:]
+        for entry in rankings {
+            for defeat in entry.encountersDefeated {
+                killsBySlug[defeat.slug, default: []].append((entry.guild, defeat.firstDefeated))
+            }
+        }
 
         var events: [KillFeedEvent] = []
-        for step in steps {
-            guard step.progress >= 1, step.progress <= orderedEncounters.count else { continue }
-            let boss = orderedEncounters[step.progress - 1]
-
-            // The API's array order isn't guaranteed to be chronological, so rank by
-            // defeatedAt ourselves rather than trusting array position.
-            let kills = step.guilds
-                .compactMap { kill in kill.defeatedAt.map { (kill.guild, $0) } }
-                .sorted { $0.1 < $1.1 }
-
-            for (index, entry) in kills.enumerated() {
-                events.append(KillFeedEvent(guild: entry.0, boss: boss, rank: index + 1, defeatedAt: entry.1))
+        for (slug, kills) in killsBySlug {
+            guard let boss = encounterBySlug[slug] else { continue }
+            for (index, kill) in kills.sorted(by: { $0.defeatedAt < $1.defeatedAt }).enumerated() {
+                events.append(KillFeedEvent(guild: kill.guild, boss: boss, rank: index + 1, defeatedAt: kill.defeatedAt))
             }
         }
         return events.sorted { $0.defeatedAt > $1.defeatedAt }

@@ -36,22 +36,14 @@ final class KillFeedViewModel: ObservableObject {
         if events.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
+            // raid-rankings is the actual data source now (see
+            // WorldFirstTracker.killFeedEvents(rankings:)), not just a best-effort logo
+            // correction — a failure here is a real failed refresh, not silently empty kills.
             async let trackerTask = service.fetchTracker()
-            // raid-race's guild.logo is stale/broken for some guilds even when raid-rankings
-            // has a working one for the same guild (confirmed via device logs — a 403 from an
-            // old per-raid asset path raid-race still references). Best-effort: a rankings
-            // fetch failure just means no logo correction this cycle, not a failed refresh.
-            async let rankingsTask = (try? await service.fetchRaidRankings()) ?? []
+            async let rankingsTask = service.fetchRaidRankings()
             let tracker = try await trackerTask
-            let rankings = await rankingsTask
-            let logoByGuildId = Dictionary(rankings.map { ($0.guild.id, $0.guild.logo) }, uniquingKeysWith: { first, _ in first })
-            events = tracker.killFeedEvents().map { event in
-                guard let logo = logoByGuildId[event.guild.id] else { return event }
-                return KillFeedEvent(
-                    guild: event.guild.withLogo(logo), boss: event.boss, rank: event.rank,
-                    defeatedAt: event.defeatedAt
-                )
-            }
+            let rankings = try await rankingsTask
+            events = tracker.killFeedEvents(rankings: rankings)
             lastUpdated = Date()
             errorMessage = nil
         } catch {
