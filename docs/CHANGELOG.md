@@ -36,9 +36,11 @@ holds whatever's landed since the last one.
 - The watchOS app and Home Screen widget could show a guild that was merely scouting/wiping on
   a later boss as the race "leader," even while another guild with more confirmed kills was
   genuinely ahead. Both now anchor on the real leader (most bosses killed) instead.
-- The large/extra-large Home Screen widget mostly showed empty space — it only ever displayed
-  two small blocks of text regardless of how much room the widget actually had. Now fills that
-  space with a top-5 guild standings list.
+- The medium and large/extra-large Home Screen widgets mostly showed empty space — each only
+  ever displayed a small, fixed block of text regardless of how much room the widget actually
+  had. Both now fill that space with a short guild standings list/strip.
+- A stray tab character embedded in some raider.io coverage posts could render as a large,
+  broken-looking gap inside a push notification's body text. Now sanitized before sending.
 
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a
