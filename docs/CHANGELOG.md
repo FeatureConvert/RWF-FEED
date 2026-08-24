@@ -47,6 +47,8 @@ holds whatever's landed since the last one.
   had. Both now fill that space with a short guild standings list/strip.
 - A stray tab character embedded in some raider.io coverage posts could render as a large,
   broken-looking gap inside a push notification's body text. Now sanitized before sending.
+- Some coverage posts run two sentences together with no space at all between them (e.g.
+  "...Sentinels!Congratulations Instant_Dollars...") — now a space is inserted automatically.
 - The Heartbreak tab's "close call" cutoff was hardcoded to 10%, completely separate from the
   Settings slider that (confusingly) only ever affected push notifications. Both now use the
   same threshold.
