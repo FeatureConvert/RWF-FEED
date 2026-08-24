@@ -26,6 +26,9 @@ holds whatever's landed since the last one.
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a
   glance.
+- Kills tab now only shows each boss's top 5 placements, instead of every guild that's ever
+  killed it — a boss cleared by dozens of guilds was burying World Firsts and close finishes
+  under a wall of "43rd place" entries.
 
 ## [1.0] — 2026-08-23
 Initial App Store submission (in Apple review as of this writing). See
