@@ -254,22 +254,39 @@ struct HallOfFame: Decodable {
 }
 
 struct HallOfFameBossKill: Decodable {
+    /// The API's own top-level "boss" key is just the encounter slug as a bare string — the
+    /// actual Encounter-shaped object (encounterId/name/ordinal/iconUrl) lives under
+    /// "bossSummary" instead. Decoding "boss" directly as an `Encounter?` throws a type
+    /// mismatch on every response (confirmed live against raider.io), which — since a fetch
+    /// failure here is swallowed by `try?` in BossBreakdownViewModel — silently meant "Watch
+    /// the Kill" VOD links never appeared for any raid.
     let boss: Encounter?
     let bossKillVideo: [BossKillVideo]?
+
+    enum CodingKeys: String, CodingKey {
+        case boss = "bossSummary"
+        case bossKillVideo
+    }
 }
 
 struct BossKillVideo: Decodable {
     let type: String
     let id: String
-    let videoTimestampSeconds: Int
+    /// Null/absent for some video types (e.g. YouTube uploads, confirmed live against
+    /// raider.io) — only Twitch VODs are expected to carry a real seek offset. Decoding this
+    /// as a non-optional Int threw on every response containing a non-Twitch video entry,
+    /// which — combined with the `boss`/`bossSummary` mismatch above — meant the whole Hall of
+    /// Fame fetch always failed.
+    let videoTimestampSeconds: Int?
 
     /// Only Twitch VODs are documented on this endpoint; nil for anything else so callers
     /// don't have to know the URL scheme for a video type raider.io might add later.
     var twitchURL: URL? {
         guard type == "twitch" else { return nil }
-        let hours = videoTimestampSeconds / 3600
-        let minutes = (videoTimestampSeconds % 3600) / 60
-        let seconds = videoTimestampSeconds % 60
+        let total = videoTimestampSeconds ?? 0
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
         return URL(string: "https://www.twitch.tv/videos/\(id)?t=\(hours)h\(minutes)m\(seconds)s")
     }
 }
