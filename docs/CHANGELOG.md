@@ -9,6 +9,10 @@ holds whatever's landed since the last one.
 
 ## [Unreleased]
 
+### Added
+- Tracker tab: pin any guild (tap the star) to keep it visible in its own section above the
+  main standings, regardless of its rank.
+
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused
   by the Cloudflare Worker backend hitting a free-tier write-operation limit a few hours after
