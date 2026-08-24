@@ -12,6 +12,12 @@ holds whatever's landed since the last one.
 ### Added
 - Tracker tab: pin any guild (tap the star) to keep it visible in its own section above the
   main standings, regardless of its rank.
+- Region filter (Settings → Region: World/US/EU/KR/TW/CN) — narrows Tracker, Kills, Bosses, and
+  Heartbreak to one region's guilds. Push notifications always reflect the true global race
+  regardless of this filter.
+- Notifications now open directly to the relevant tab (new post → Feed, Major Heartbreaker →
+  Heartbreak, World First!/Spoiler Alert → Kills, WoW News → News) instead of whatever Default
+  Tab happens to be set.
 
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused
@@ -41,6 +47,9 @@ holds whatever's landed since the last one.
   had. Both now fill that space with a short guild standings list/strip.
 - A stray tab character embedded in some raider.io coverage posts could render as a large,
   broken-looking gap inside a push notification's body text. Now sanitized before sending.
+- The Heartbreak tab's "close call" cutoff was hardcoded to 10%, completely separate from the
+  Settings slider that (confusingly) only ever affected push notifications. Both now use the
+  same threshold.
 
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a
