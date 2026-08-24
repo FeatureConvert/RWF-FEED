@@ -481,10 +481,16 @@ async function endAllLiveActivities(env, tokens, finalContentState) {
   for (const token of tokens) {
     await sendLiveActivityPush(env, token, "end", finalContentState);
   }
-  // Every activity just got told to end — the registry should be empty now regardless (a
-  // fresh registration for the next boss lands in a following /live-activity/register call,
-  // same as the app re-registering a rotated device push token).
-  await env.DB.prepare("DELETE FROM live_activity_tokens").run();
+  // Only remove the tokens we actually just told to end — not the whole table. A device
+  // calling /live-activity/register mid-tick (after `tokens` above was already read from D1,
+  // e.g. while the two raider.io fetches earlier in checkRaiderIOEvents were in flight) would
+  // otherwise be silently deleted here despite never having been sent an "end" push (or any
+  // push at all), leaving its Live Activity stuck with no way to update short of the user
+  // manually restarting it from Settings. sendLiveActivityPush above already removes any of
+  // these tokens on a 410/BadDeviceToken, so this only catches the ones delivered successfully.
+  for (const token of tokens) {
+    await env.DB.prepare("DELETE FROM live_activity_tokens WHERE push_token = ?").bind(token).run();
+  }
 }
 
 /// A Live Activity push is a silent content update, not a user-visible notification — no
