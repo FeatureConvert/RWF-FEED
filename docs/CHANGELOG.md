@@ -23,6 +23,9 @@ holds whatever's landed since the last one.
   even when the app is closed — no need to reopen it for updates.
 - Watch app now shows a Top 3 guild standings list (bosses down) below the leader's next-boss
   summary.
+- First-visit tips (TipKit) on the Heartbreak tab, Kills tab, and the Close Call Threshold
+  slider in Settings, explaining each to newcomers. Shown once per device, never again after
+  dismissed.
 
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused

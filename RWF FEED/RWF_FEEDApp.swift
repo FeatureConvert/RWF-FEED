@@ -7,11 +7,18 @@
 
 import SwiftUI
 import UserNotifications
+import TipKit
 
 @main
 struct RWF_FEEDApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        // Has to happen before any .popoverTip() view appears, so init() rather than onAppear —
+        // TipKit persists "already shown" state itself, nothing bespoke needed here.
+        try? Tips.configure()
+    }
 
     var body: some Scene {
         WindowGroup {

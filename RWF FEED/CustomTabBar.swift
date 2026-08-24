@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct CustomTabBar: View {
     @Binding var selection: AppTab
@@ -29,9 +30,10 @@ struct CustomTabBar: View {
         }
     }
 
+    @ViewBuilder
     private func tabButton(for tab: AppTab) -> some View {
         let isSelected = selection == tab
-        return Button {
+        let button = Button {
             selection = tab
         } label: {
             VStack(spacing: 3) {
@@ -46,5 +48,17 @@ struct CustomTabBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(tab.title)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+
+        // TipKit onboarding — only the two tabs whose meaning isn't obvious from name/icon
+        // alone get a first-visit tip; everything else (Feed, Tracker, Bosses, News) is
+        // self-explanatory and left untouched.
+        switch tab {
+        case .heartbreak:
+            button.popoverTip(HeartbreakTabTip(), arrowEdge: .bottom)
+        case .kills:
+            button.popoverTip(KillsTabTip(), arrowEdge: .bottom)
+        default:
+            button
+        }
     }
 }

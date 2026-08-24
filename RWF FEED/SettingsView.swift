@@ -8,6 +8,7 @@
 
 import SwiftUI
 import MessageUI
+import TipKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -153,6 +154,7 @@ struct SettingsView: View {
                         .tint(Theme.accent)
                     }
                     .padding(.vertical, 2)
+                    .popoverTip(CloseCallThresholdTip(), arrowEdge: .top)
 
                     Toggle(isOn: $notificationPreferences.notifyNonWorldFirstHeartbreaks) {
                         Label("Notify for Non-World-First Close Calls", systemImage: "flag.checkered")
