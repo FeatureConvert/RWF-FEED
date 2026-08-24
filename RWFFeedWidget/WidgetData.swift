@@ -54,6 +54,13 @@ private struct EncounterPullEntry: Decodable {
     let isDefeated: Bool
 }
 
+struct WidgetGuildStanding: Codable, Identifiable {
+    let guildName: String
+    let bossesDown: Int
+
+    var id: String { guildName }
+}
+
 struct WidgetBossState: Codable {
     let bossName: String
     let bossOrdinal: Int
@@ -65,10 +72,21 @@ struct WidgetBossState: Codable {
     let bestGuildName: String?
     let bestPercent: Double?
     let pullCount: Int?
+    /// Top 5 guilds by confirmed kills — only rendered by the large/extra-large families, which
+    /// otherwise have far more space than the frontier-boss summary alone fills. Computed from
+    /// the same raid-rankings fetch the frontier-boss logic already needs, no extra request.
+    let topGuilds: [WidgetGuildStanding]
 
     static let placeholder = WidgetBossState(
         bossName: "Entombed Sentinels", bossOrdinal: 1, totalBosses: 8, iconData: nil,
-        bestGuildName: "xD", bestPercent: 63.01, pullCount: 6
+        bestGuildName: "xD", bestPercent: 63.01, pullCount: 6,
+        topGuilds: [
+            WidgetGuildStanding(guildName: "xD", bossesDown: 4),
+            WidgetGuildStanding(guildName: "Unluck", bossesDown: 4),
+            WidgetGuildStanding(guildName: "Sabotage", bossesDown: 3),
+            WidgetGuildStanding(guildName: "Liquid", bossesDown: 3),
+            WidgetGuildStanding(guildName: "Humble", bossesDown: 3),
+        ]
     )
 }
 
@@ -140,9 +158,16 @@ enum RWFWidgetData {
             let best = bestPullBySlug[boss.slug]
             let iconData = try? await fetchIconData(path: boss.iconUrl)
 
+            let topGuilds = rankings
+                .map { WidgetGuildStanding(guildName: $0.guild.displayName, bossesDown: $0.encountersDefeated.count) }
+                .filter { $0.bossesDown > 0 }
+                .sorted { $0.bossesDown > $1.bossesDown }
+                .prefix(5)
+
             return WidgetBossState(
                 bossName: boss.name, bossOrdinal: boss.ordinal + 1, totalBosses: encounters.count, iconData: iconData,
-                bestGuildName: best?.guild, bestPercent: best?.percent, pullCount: best?.pullCount
+                bestGuildName: best?.guild, bestPercent: best?.percent, pullCount: best?.pullCount,
+                topGuilds: Array(topGuilds)
             )
         } catch {
             return nil

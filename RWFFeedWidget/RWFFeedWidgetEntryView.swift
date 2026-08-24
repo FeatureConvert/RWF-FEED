@@ -110,11 +110,11 @@ struct LargeBossView: View {
     let boss: WidgetBossState?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 BossIcon(data: boss?.iconData, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8) · FURTHEST PULLED")
+                    Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8) · LEADER'S NEXT")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(WidgetTheme.textSecondary)
                     Text(boss?.bossName ?? "—")
@@ -124,14 +124,12 @@ struct LargeBossView: View {
                 Spacer()
             }
 
-            Spacer(minLength: 0)
-
             VStack(alignment: .leading, spacing: 4) {
                 Text("BEST LIVE PULL")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(WidgetTheme.textSecondary)
                 Text(percentText(boss?.bestPercent))
-                    .font(.system(size: 40, weight: .bold))
+                    .font(.system(size: 32, weight: .bold))
                     .foregroundStyle(WidgetTheme.accent)
                     .monospacedDigit()
                 if let guild = boss?.bestGuildName, let pulls = boss?.pullCount {
@@ -142,6 +140,34 @@ struct LargeBossView: View {
                     Text("No live pulls yet")
                         .font(.system(size: 14))
                         .foregroundStyle(WidgetTheme.textSecondary)
+                }
+            }
+
+            if let topGuilds = boss?.topGuilds, !topGuilds.isEmpty {
+                Divider()
+                    .overlay(WidgetTheme.textSecondary.opacity(0.2))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("STANDINGS")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(WidgetTheme.textSecondary)
+                    ForEach(Array(topGuilds.enumerated()), id: \.element.id) { index, standing in
+                        HStack(spacing: 8) {
+                            Text("\(index + 1)")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(WidgetTheme.textSecondary)
+                                .frame(width: 14, alignment: .leading)
+                            Text(standing.guildName)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(WidgetTheme.textPrimary)
+                                .lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text("\(standing.bossesDown)/\(boss?.totalBosses ?? 8) M")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(WidgetTheme.textSecondary)
+                                .monospacedDigit()
+                        }
+                    }
                 }
             }
 
