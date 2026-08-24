@@ -53,6 +53,11 @@ private struct EncounterPullEntry: Decodable {
     let isDefeated: Bool
 }
 
+struct WatchGuildStanding: Codable {
+    let guildName: String
+    let bossesDown: Int
+}
+
 struct WatchBossState: Codable {
     let bossName: String
     let bossOrdinal: Int
@@ -61,12 +66,18 @@ struct WatchBossState: Codable {
     let bestGuildName: String?
     let bestPercent: Double?
     let pullCount: Int?
+    let top3: [WatchGuildStanding]
 
     var fullIconURL: URL? { URL(string: "https://cdn.raiderio.net\(iconUrl)") }
 
     static let placeholder = WatchBossState(
         bossName: "Entombed Sentinels", bossOrdinal: 1, totalBosses: 8, iconUrl: "",
-        bestGuildName: "xD", bestPercent: 63.01, pullCount: 6
+        bestGuildName: "xD", bestPercent: 63.01, pullCount: 6,
+        top3: [
+            WatchGuildStanding(guildName: "xD", bossesDown: 6),
+            WatchGuildStanding(guildName: "Liquid", bossesDown: 5),
+            WatchGuildStanding(guildName: "Echo", bossesDown: 5),
+        ]
     )
 }
 
@@ -135,9 +146,17 @@ enum RWFWatchData {
             }
             let best = bestPullBySlug[boss.slug]
 
+            // Same confirmed-kill-count ranking as the leader above, just keeping the top 3
+            // instead of only the winner.
+            let top3 = rankings
+                .sorted(by: { $0.encountersDefeated.count > $1.encountersDefeated.count })
+                .prefix(3)
+                .map { WatchGuildStanding(guildName: $0.guild.displayName, bossesDown: $0.encountersDefeated.count) }
+
             return WatchBossState(
                 bossName: boss.name, bossOrdinal: boss.ordinal + 1, totalBosses: encounters.count, iconUrl: boss.iconUrl,
-                bestGuildName: best?.guild, bestPercent: best?.percent, pullCount: best?.pullCount
+                bestGuildName: best?.guild, bestPercent: best?.percent, pullCount: best?.pullCount,
+                top3: Array(top3)
             )
         } catch {
             return nil

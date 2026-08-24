@@ -38,6 +38,25 @@ struct WatchContentView: View {
                         Text("\(guild) — \(pulls) pulls")
                             .font(.system(size: 13))
                     }
+
+                    if !boss.top3.isEmpty {
+                        Divider()
+
+                        Text("TOP 3")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.secondary)
+                        ForEach(Array(boss.top3.enumerated()), id: \.offset) { index, standing in
+                            HStack {
+                                Text("\(index + 1). \(standing.guildName)")
+                                    .font(.system(size: 12))
+                                    .lineLimit(1)
+                                Spacer()
+                                Text("\(standing.bossesDown)")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                    }
                 } else if isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity)

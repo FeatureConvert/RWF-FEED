@@ -21,6 +21,8 @@ holds whatever's landed since the last one.
 - Live Activity (Settings → Live Activity → Start) showing the race leader's next boss and the
   best current pull on it, on the Lock Screen and in the Dynamic Island. Kept live by the server
   even when the app is closed — no need to reopen it for updates.
+- Watch app now shows a Top 3 guild standings list (bosses down) below the leader's next-boss
+  summary.
 
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused
