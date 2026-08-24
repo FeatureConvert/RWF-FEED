@@ -22,6 +22,8 @@ holds whatever's landed since the last one.
   leaderboard. Now reads from the same live, real-time source the leaderboard itself uses.
 - Kills tab had the same issue as Tracker above (same root cause) — recent kills could be
   missing entirely. Fixed the same way.
+- Push notifications never showed a badge on the app icon — the push payload never requested
+  one. Now requests a badge, and it clears when the app is opened.
 
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a
