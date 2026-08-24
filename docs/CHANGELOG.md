@@ -33,6 +33,12 @@ holds whatever's landed since the last one.
   full iPad's width, ballooning card/video sizes and spacing the tab bar icons far apart. Now
   capped to a sensible column width and centered, matching a real iPad layout. Checked against
   the largest (iPad Pro 13") and smallest (iPad mini) supported sizes.
+- The watchOS app and Home Screen widget could show a guild that was merely scouting/wiping on
+  a later boss as the race "leader," even while another guild with more confirmed kills was
+  genuinely ahead. Both now anchor on the real leader (most bosses killed) instead.
+- The large/extra-large Home Screen widget mostly showed empty space — it only ever displayed
+  two small blocks of text regardless of how much room the widget actually had. Now fills that
+  space with a top-5 guild standings list.
 
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a
