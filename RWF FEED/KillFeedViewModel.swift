@@ -43,7 +43,7 @@ final class KillFeedViewModel: ObservableObject {
             async let rankingsTask = service.fetchRaidRankings()
             let tracker = try await trackerTask
             let rankings = try await rankingsTask
-            groups = tracker.killFeedGroups(rankings: rankings)
+            groups = tracker.killFeedGroups(rankings: rankings, maxRank: 3)
             lastUpdated = Date()
             errorMessage = nil
         } catch {
