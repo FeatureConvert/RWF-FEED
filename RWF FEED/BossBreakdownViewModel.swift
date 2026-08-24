@@ -36,10 +36,13 @@ final class BossBreakdownViewModel: ObservableObject {
         if summaries.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
-            async let trackerTask = service.fetchTracker()
-            async let rankingsTask = service.fetchRaidRankings()
-            // Best-effort: a Hall of Fame fetch failure just means no VOD links this cycle,
-            // not a failed refresh — the boss list itself doesn't depend on it.
+            let region = RegionFilter.shared.region.rawValue
+            async let trackerTask = service.fetchTracker(region: region)
+            async let rankingsTask = service.fetchRaidRankings(region: region)
+            // Hall of Fame deliberately stays world-scoped regardless of the region filter — it
+            // tracks genuine world-first kills, not "first in this region," so a VOD link
+            // should only ever show up next to an actual world first. Best-effort: a fetch
+            // failure just means no VOD links this cycle, not a failed refresh.
             async let hallOfFameTask = (try? await service.fetchHallOfFame()) ?? []
             let (tracker, rankings, hallOfFame) = try await (trackerTask, rankingsTask, hallOfFameTask)
             let vodBySlug = Dictionary(

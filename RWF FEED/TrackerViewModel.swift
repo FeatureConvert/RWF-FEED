@@ -37,16 +37,17 @@ final class TrackerViewModel: ObservableObject {
         if standings.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
-            async let trackerTask = service.fetchTracker()
+            let region = RegionFilter.shared.region.rawValue
+            async let trackerTask = service.fetchTracker(region: region)
             // raid-rankings is standings' primary source now (see
             // WorldFirstTracker.standings(rankings:)) — best-effort here just means a fetch
             // failure falls back to the timeline's own (laggier, sometimes-incomplete) counts
             // instead of a failed refresh.
-            async let rankingsTask = (try? await service.fetchRaidRankings()) ?? []
+            async let rankingsTask = (try? await service.fetchRaidRankings(region: region)) ?? []
             let tracker = try await trackerTask
             let rankings = await rankingsTask
             raid = tracker.raid
-            standings = tracker.standings(rankings: rankings)
+            standings = tracker.standings(rankings: rankings, regionSlug: region)
             lastUpdated = Date()
             errorMessage = nil
         } catch {

@@ -15,6 +15,7 @@ struct SettingsView: View {
     @ObservedObject private var appearance = AppearanceSettings.shared
     @ObservedObject private var notificationPreferences = NotificationPreferences.shared
     @ObservedObject private var defaultTabSettings = DefaultTabSettings.shared
+    @ObservedObject private var regionFilter = RegionFilter.shared
     @State private var showingMailCompose = false
     /// The slider's live value while dragging. Bound separately from
     /// notificationPreferences.heartbreakThresholdPercent, whose didSet fires a network POST —
@@ -53,6 +54,21 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.textSecondary)
                 } footer: {
                     Text("Which tab opens when you launch the app.")
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .listRowBackground(Theme.cardSurface)
+
+                Section {
+                    Picker("Region", selection: $regionFilter.region) {
+                        ForEach(RaceRegion.allCases) { region in
+                            Text(region.label).tag(region)
+                        }
+                    }
+                } header: {
+                    Text("Region")
+                        .foregroundStyle(Theme.textSecondary)
+                } footer: {
+                    Text("Filters Tracker, Kills, Bosses, and Heartbreak to one region's guilds. Push notifications always reflect the true global race regardless of this filter.")
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .listRowBackground(Theme.cardSurface)

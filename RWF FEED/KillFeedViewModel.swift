@@ -39,8 +39,9 @@ final class KillFeedViewModel: ObservableObject {
             // raid-rankings is the actual data source now (see
             // WorldFirstTracker.killFeedGroups(rankings:)), not just a best-effort logo
             // correction — a failure here is a real failed refresh, not silently empty kills.
-            async let trackerTask = service.fetchTracker()
-            async let rankingsTask = service.fetchRaidRankings()
+            let region = RegionFilter.shared.region.rawValue
+            async let trackerTask = service.fetchTracker(region: region)
+            async let rankingsTask = service.fetchRaidRankings(region: region)
             let tracker = try await trackerTask
             let rankings = try await rankingsTask
             groups = tracker.killFeedGroups(rankings: rankings, maxRank: 3)

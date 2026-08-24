@@ -105,9 +105,19 @@ struct LiveBadge: View {
 
 /// A fixed light-lavender pill, same in both appearance modes — like `Theme.live`, this one
 /// doesn't ramp with light/dark since it's a badge convention rather than themed chrome.
+/// "WORLD FIRST" is only true when every region's guilds were considered — with a region
+/// filter active, "1st" among the (region-filtered) rankings this badge sits next to only
+/// means first *in that region*, and claiming otherwise would be factually wrong. Relabels
+/// itself off the shared RegionFilter rather than needing every caller to pass region in.
 struct WorldFirstBadge: View {
+    @ObservedObject private var regionFilter = RegionFilter.shared
+
+    private var label: String {
+        regionFilter.region == .world ? "WORLD FIRST" : "\(regionFilter.region.label) FIRST"
+    }
+
     var body: some View {
-        Text("WORLD FIRST")
+        Text(label)
             .font(Theme.liveBadgeLabel)
             .tracking(Theme.liveBadgeTracking)
             .foregroundStyle(Color(hex: "#292B31"))
