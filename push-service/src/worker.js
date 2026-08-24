@@ -165,7 +165,11 @@ async function checkForNewPosts(env) {
       // Coverage posts routinely announce kills in the first sentence ("Method one-shots
       // Mythic Ula'tek!") — spoilerFreeEnabled only redacted World First pushes until now,
       // which meant a spoiler-free user got the kill spoiled here first anyway.
-      const body = post.contentPreview || "New update";
+      // raider.io's contentPreview isn't guaranteed clean plain text — seen a literal tab
+      // character embedded mid-sentence ("...23.49%\tafter 7 pulls!"), which renders as a
+      // large, broken-looking gap in a notification banner. Collapse any whitespace run to a
+      // single space rather than trusting the source.
+      const body = normalizeWhitespace(post.contentPreview) || "New update";
       const spoilerFreeBody = "New coverage update — open the app when you're ready to see it.";
       for (const device of devices) {
         await sendPush(env, device.token, title, device.spoilerFreeEnabled ? spoilerFreeBody : body, `post-${post.id}`);
@@ -398,6 +402,13 @@ function decodeXmlEntities(str) {
     .replace(/&quot;/g, '"')
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
+}
+
+// Collapses any run of whitespace (including tabs/newlines — raider.io's contentPreview has
+// been seen with a literal tab embedded mid-sentence) into a single space, and trims the ends.
+function normalizeWhitespace(str) {
+  if (!str) return str;
+  return str.replace(/\s+/g, " ").trim();
 }
 
 // ---- APNs ----
