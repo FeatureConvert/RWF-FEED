@@ -11,6 +11,10 @@ import SwiftUI
 struct KillFeedView: View {
     @StateObject private var viewModel = KillFeedViewModel()
     @State private var showingSettings = false
+    /// Bosses collapsed by the user — absent means expanded, so a newly-appearing boss (one
+    /// nobody's collapsed yet) always starts expanded rather than needing to be in some
+    /// explicit "expanded" set.
+    @State private var collapsedBossIDs: Set<Int> = []
     /// See FeedView's isActive doc comment — ContentView keeps every visited tab mounted, so
     /// polling has to be paused/resumed off this instead of .onDisappear (which never fires).
     var isActive: Bool = true
@@ -42,23 +46,33 @@ struct KillFeedView: View {
                         .scrollContentBackground(.hidden)
                         .refreshable { await viewModel.refresh() }
                     } else {
-                        List {
-                            ForEach(viewModel.groups) { group in
-                                Section {
-                                    ForEach(Array(group.kills.enumerated()), id: \.element.id) { index, event in
-                                        KillFeedRow(event: event, isLast: index == group.kills.count - 1)
-                                            .listRowSeparator(.hidden)
-                                            .listRowBackground(Color.clear)
-                                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        // Plain ScrollView + LazyVStack rather than List's Section(header:) —
+                        // gives BossGroupHeader below a normal SwiftUI view to attach its tap
+                        // gesture to, without going through List's UIKit table section-header
+                        // wrapping.
+                        ScrollView {
+                            LazyVStack(spacing: 20) {
+                                ForEach(viewModel.groups) { group in
+                                    let isExpanded = !collapsedBossIDs.contains(group.boss.id)
+                                    VStack(spacing: 0) {
+                                        BossGroupHeader(boss: group.boss, isExpanded: isExpanded) {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                if isExpanded {
+                                                    collapsedBossIDs.insert(group.boss.id)
+                                                } else {
+                                                    collapsedBossIDs.remove(group.boss.id)
+                                                }
+                                            }
+                                        }
+                                        if isExpanded {
+                                            ForEach(Array(group.kills.enumerated()), id: \.element.id) { index, event in
+                                                KillFeedRow(event: event, isLast: index == group.kills.count - 1)
+                                            }
+                                        }
                                     }
-                                } header: {
-                                    BossGroupHeader(boss: group.boss)
                                 }
                             }
                         }
-                        .listStyle(.plain)
-                        .listSectionSpacing(.compact)
-                        .scrollContentBackground(.hidden)
                         .refreshable { await viewModel.refresh() }
                     }
                 }
@@ -81,6 +95,8 @@ struct KillFeedView: View {
 
 struct BossGroupHeader: View {
     let boss: Encounter
+    let isExpanded: Bool
+    let onToggle: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -97,13 +113,19 @@ struct BossGroupHeader: View {
             Text(boss.name)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
+
+            Spacer()
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .rotationEffect(.degrees(isExpanded ? 0 : -90))
         }
-        .textCase(nil)
-        .padding(.top, 4)
-        .padding(.bottom, 2)
+        .padding(.vertical, 6)
         .padding(.horizontal, Theme.trackerRowHPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.background)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onToggle)
     }
 }
 
