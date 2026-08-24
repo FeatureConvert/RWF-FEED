@@ -26,6 +26,7 @@ holds whatever's landed since the last one.
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a
   glance.
+- Kills tab boss sections are now collapsible (tap a boss to fold/unfold its kills).
 - Kills tab reworked from one flat chronological list into a section per boss (each capped to
   its top 3 placements) — the flat version made it hard to tell at a glance which boss a kill
   belonged to once several were in progress at once, and buried World Firsts under a wall of
