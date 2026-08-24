@@ -7,10 +7,22 @@ import SwiftUI
 
 struct TrackerView: View {
     @StateObject private var viewModel = TrackerViewModel()
+    @ObservedObject private var pinnedGuilds = PinnedGuilds.shared
     @State private var showingSettings = false
     /// See FeedView's isActive doc comment — ContentView keeps every visited tab mounted, so
     /// polling has to be paused/resumed off this instead of .onDisappear (which never fires).
     var isActive: Bool = true
+
+    /// Capped to the top 25 the same way the whole list used to be, but a pinned guild always
+    /// shows regardless of rank (that's the point of pinning one outside the visible range) —
+    /// so it's excluded here and shown in its own section instead, not duplicated.
+    private var pinnedStandings: [GuildStanding] {
+        viewModel.standings.filter { pinnedGuilds.isPinned($0.guild.id) }
+    }
+
+    private var otherStandings: [GuildStanding] {
+        Array(viewModel.standings.filter { !pinnedGuilds.isPinned($0.guild.id) }.prefix(25))
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,16 +51,23 @@ struct TrackerView: View {
                         .scrollContentBackground(.hidden)
                         .refreshable { await viewModel.refresh() }
                     } else {
-                        List(Array(viewModel.standings.enumerated()), id: \.element.id) { index, standing in
-                            GuildStandingRow(
-                                rank: index + 1,
-                                standing: standing,
-                                totalBosses: viewModel.raid?.encounters.count ?? 8,
-                                isLast: index == viewModel.standings.count - 1
-                            )
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        List {
+                            if !pinnedStandings.isEmpty {
+                                Section {
+                                    standingRows(pinnedStandings)
+                                } header: {
+                                    Text("Pinned")
+                                        .foregroundStyle(Theme.textSecondary)
+                                }
+                                Section {
+                                    standingRows(otherStandings)
+                                } header: {
+                                    Text("Standings")
+                                        .foregroundStyle(Theme.textSecondary)
+                                }
+                            } else {
+                                standingRows(otherStandings)
+                            }
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
@@ -70,18 +89,35 @@ struct TrackerView: View {
             SettingsView()
         }
     }
+
+    @ViewBuilder
+    private func standingRows(_ standings: [GuildStanding]) -> some View {
+        ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
+            GuildStandingRow(
+                standing: standing,
+                totalBosses: viewModel.raid?.encounters.count ?? 8,
+                isLast: index == standings.count - 1,
+                isPinned: pinnedGuilds.isPinned(standing.guild.id),
+                onTogglePin: { pinnedGuilds.toggle(standing.guild.id) }
+            )
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        }
+    }
 }
 
 struct GuildStandingRow: View {
-    let rank: Int
     let standing: GuildStanding
     let totalBosses: Int
     let isLast: Bool
+    let isPinned: Bool
+    let onTogglePin: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: Theme.trackerRowColumnGap) {
-                Text("\(rank)")
+                Text("\(standing.rank)")
                     .font(Theme.rankNumber)
                     .foregroundStyle(Theme.textSecondary)
                     .frame(width: 22, alignment: .leading)
@@ -118,6 +154,15 @@ struct GuildStandingRow: View {
                         .monospacedDigit()
                     }
                 }
+
+                Button(action: onTogglePin) {
+                    Image(systemName: isPinned ? "star.fill" : "star")
+                        .font(.system(size: 15))
+                        .foregroundStyle(isPinned ? Theme.accent : Theme.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
             .padding(.vertical, Theme.trackerRowVPadding)
             .padding(.horizontal, Theme.trackerRowHPadding)

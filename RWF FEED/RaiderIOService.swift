@@ -135,6 +135,13 @@ extension WorldFirstTracker {
         return best
     }
 
+    private struct UnrankedStanding {
+        let guild: RaceGuild
+        let bossesDown: Int
+        let lastKillAt: Date?
+        let isLive: Bool
+    }
+
     /// One ranked row per guild, using raid-rankings (raider.io's live Desktop App pull
     /// tracking) as the source of truth for boss count and kill time — raid-race's own
     /// `timeline` has been observed to omit guilds entirely for extended stretches of the race
@@ -143,23 +150,23 @@ extension WorldFirstTracker {
     /// be trusted as the primary source anymore. The timeline is still consulted for `isLive`
     /// (streamer status), which raid-rankings doesn't carry, and for any guild raid-rankings
     /// itself doesn't have data for (falls back to the timeline's own, laggier count rather
-    /// than dropping the guild). Capped to the top `limit` guilds — raid-rankings itself only
-    /// ever returns the top 50, and that's still more than useful to show in a tracker list.
-    func standings(rankings: [RaidRankingEntry], regionSlug: String = "world", limit: Int = 25) -> [GuildStanding] {
+    /// than dropping the guild). Returns the full list (raid-rankings itself only ever returns
+    /// the top 50) — capping/pinning to a subset is a display concern the caller handles.
+    func standings(rankings: [RaidRankingEntry], regionSlug: String = "world") -> [GuildStanding] {
         let timelineBest = bestProgressPerGuild(timeline(regionSlug: regionSlug))
 
-        var byGuildId: [Int: GuildStanding] = [:]
+        var byGuildId: [Int: UnrankedStanding] = [:]
         for entry in rankings {
             let bossesDown = entry.encountersDefeated.count
             guard bossesDown > 0 else { continue }
             let lastKillAt = entry.encountersDefeated.map(\.firstDefeated).max()
             let isLive = timelineBest[entry.guild.id]?.isLive ?? false
-            byGuildId[entry.guild.id] = GuildStanding(
+            byGuildId[entry.guild.id] = UnrankedStanding(
                 guild: entry.guild, bossesDown: bossesDown, lastKillAt: lastKillAt, isLive: isLive
             )
         }
         for best in timelineBest.values where byGuildId[best.guild.id] == nil {
-            byGuildId[best.guild.id] = GuildStanding(
+            byGuildId[best.guild.id] = UnrankedStanding(
                 guild: best.guild, bossesDown: best.progress, lastKillAt: best.killedAt, isLive: best.isLive
             )
         }
@@ -172,7 +179,12 @@ extension WorldFirstTracker {
             case (_, nil): return true
             }
         }
-        return Array(sorted.prefix(limit))
+        return sorted.enumerated().map { index, entry in
+            GuildStanding(
+                guild: entry.guild, rank: index + 1, bossesDown: entry.bossesDown,
+                lastKillAt: entry.lastKillAt, isLive: entry.isLive
+            )
+        }
     }
 
     /// One group per boss with at least one kill, sourced from raid-rankings rather than the

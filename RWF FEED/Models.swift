@@ -160,6 +160,10 @@ struct Encounter: Decodable, Identifiable {
 
 struct GuildStanding: Identifiable {
     let guild: RaceGuild
+    /// Position in the full leaderboard (not the index within whatever subset of standings is
+    /// actually being displayed) — pinning a guild outside the visible top 25 still needs to
+    /// show its real rank, not "1st" just because it's first in a pinned section.
+    let rank: Int
     let bossesDown: Int
     let lastKillAt: Date?
     let isLive: Bool
