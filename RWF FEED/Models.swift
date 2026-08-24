@@ -291,6 +291,42 @@ struct BossKillVideo: Decodable {
     }
 }
 
+// MARK: - Pull velocity (push-service's own /velocity endpoint, not raider.io)
+
+/// A single (guild, boss) datapoint from ~1 hour ago, from push-service's periodic snapshots —
+/// see RaiderIOService.fetchVelocitySnapshots.
+struct VelocitySnapshot: Decodable {
+    let guildId: Int
+    let bossSlug: String
+    let percent: Double
+    let pulls: Int
+    let recordedAt: Date
+}
+
+/// A guild's rate of progress on a boss they haven't killed yet, derived by comparing the live
+/// percent (from raid-rankings, which the app already fetches directly) against a past
+/// VelocitySnapshot. This is the app's own estimate, not a number raider.io itself provides.
+struct PullTrend {
+    /// Negative = improving (closer to a kill) since the snapshot.
+    let percentChange: Double
+    let minutesAgo: Int
+
+    /// Below this, in either direction, reads as "about the same" rather than implying real
+    /// movement — pull percent naturally jitters pull-to-pull even on a genuinely stalled boss.
+    private static let meaningfulChangeThreshold = 0.3
+
+    var isImproving: Bool { percentChange < -Self.meaningfulChangeThreshold }
+    var isStalled: Bool { abs(percentChange) <= Self.meaningfulChangeThreshold }
+
+    /// nil if the snapshot is too recent to say anything meaningful yet (fresh backend
+    /// deployment, or this pair only just started showing up in the data).
+    static func compute(currentPercent: Double, snapshot: VelocitySnapshot, now: Date = Date()) -> PullTrend? {
+        let minutesAgo = Int(now.timeIntervalSince(snapshot.recordedAt) / 60)
+        guard minutesAgo >= 20 else { return nil }
+        return PullTrend(percentChange: currentPercent - snapshot.percent, minutesAgo: minutesAgo)
+    }
+}
+
 // MARK: - Derived per-boss summary (one row per boss, in raid order)
 
 struct BossSummary: Identifiable {

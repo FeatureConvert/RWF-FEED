@@ -68,7 +68,12 @@ struct BossBreakdownView: View {
                         .refreshable { await viewModel.refresh() }
                     } else {
                         List(Array(viewModel.summaries.enumerated()), id: \.element.id) { index, summary in
-                            BossSummaryRow(summary: summary, isLast: index == viewModel.summaries.count - 1)
+                            let trendKey = summary.bestPull.map { "\($0.guild.id)-\(summary.boss.slug)" }
+                            BossSummaryRow(
+                                summary: summary,
+                                trend: trendKey.flatMap { viewModel.pullTrends[$0] },
+                                isLast: index == viewModel.summaries.count - 1
+                            )
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
@@ -100,6 +105,7 @@ struct BossBreakdownView: View {
 
 struct BossSummaryRow: View {
     let summary: BossSummary
+    let trend: PullTrend?
     let isLast: Bool
 
     var body: some View {
@@ -146,6 +152,9 @@ struct BossSummaryRow: View {
                         Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) — \(bestPull.guild.displayName) (\(bestPull.pullCount) pulls)")
                             .font(.system(size: 12))
                             .foregroundStyle(Theme.textSecondary)
+                        if let trend {
+                            PullTrendLabel(trend: trend)
+                        }
                     } else {
                         Text("Not yet reached")
                             .font(.system(size: 12))

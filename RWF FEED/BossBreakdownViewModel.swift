@@ -19,6 +19,9 @@ final class BossBreakdownViewModel: ObservableObject {
     /// World-scoped standings, ranked by confirmed kills — reused for the recap's final
     /// standings list rather than re-deriving a second ranking.
     @Published private(set) var finalStandings: [GuildStanding] = []
+    /// Keyed by "\(guildId)-\(bossSlug)" — see PullTrend. Only ever has entries for pairs with
+    /// an active undefeated pull old enough to say something meaningful about.
+    @Published private(set) var pullTrends: [String: PullTrend] = [:]
 
     private let service = RaiderIOService.shared
     private var pollTask: Task<Void, Never>?
@@ -51,7 +54,8 @@ final class BossBreakdownViewModel: ObservableObject {
             // should only ever show up next to an actual world first. Best-effort: a fetch
             // failure just means no VOD links this cycle, not a failed refresh.
             async let hallOfFameTask = (try? await service.fetchHallOfFame()) ?? []
-            let (tracker, rankings, hallOfFame) = try await (trackerTask, rankingsTask, hallOfFameTask)
+            async let velocityTask = service.fetchVelocitySnapshots()
+            let (tracker, rankings, hallOfFame, velocitySnapshots) = try await (trackerTask, rankingsTask, hallOfFameTask, velocityTask)
             let vodBySlug = Dictionary(
                 hallOfFame.compactMap { entry -> (String, URL)? in
                     guard let slug = entry.boss?.slug, let url = entry.bossKillVideo?.first?.twitchURL else { return nil }
@@ -69,6 +73,17 @@ final class BossBreakdownViewModel: ObservableObject {
             finalStandings = worldStandings
             isRaceComplete = (worldStandings.first?.bossesDown ?? 0) >= tracker.raid.encounters.count
                 && !tracker.raid.encounters.isEmpty
+
+            let snapshotByKey = Dictionary(
+                velocitySnapshots.map { ("\($0.guildId)-\($0.bossSlug)", $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            pullTrends = summaries.reduce(into: [:]) { result, summary in
+                guard let bestPull = summary.bestPull else { return }
+                let key = "\(bestPull.guild.id)-\(summary.boss.slug)"
+                guard let snapshot = snapshotByKey[key] else { return }
+                result[key] = PullTrend.compute(currentPercent: bestPull.percent, snapshot: snapshot)
+            }
             lastUpdated = Date()
             errorMessage = nil
         } catch {

@@ -94,6 +94,20 @@ final class RaiderIOService {
         return decoded.hallOfFame.bossKills
     }
 
+    /// push-service's own endpoint (not raider.io) — best-effort by design: a fresh backend
+    /// deployment with no history yet, or a momentary network hiccup, should just mean no trend
+    /// indicators this cycle, never a failed refresh of the tab that's actually asking for this.
+    func fetchVelocitySnapshots() async -> [VelocitySnapshot] {
+        guard let url = URL(string: "https://rwf-feed-push.rwf-feed.workers.dev/velocity") else { return [] }
+        do {
+            let (data, response) = try await session.data(from: url)
+            try Self.validate(response)
+            return try decoder.decode([VelocitySnapshot].self, from: data)
+        } catch {
+            return []
+        }
+    }
+
     private static func validate(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
             throw RaiderIOError.badResponse

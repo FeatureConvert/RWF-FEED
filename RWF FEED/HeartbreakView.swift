@@ -44,7 +44,11 @@ struct HeartbreakView: View {
                         .refreshable { await viewModel.refresh() }
                     } else {
                         List(Array(viewModel.closeCalls.enumerated()), id: \.element.id) { index, call in
-                            CloseCallRow(call: call, isLast: index == viewModel.closeCalls.count - 1)
+                            CloseCallRow(
+                                call: call,
+                                trend: viewModel.pullTrends["\(call.guild.id)-\(call.boss.slug)"],
+                                isLast: index == viewModel.closeCalls.count - 1
+                            )
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
@@ -73,6 +77,7 @@ struct HeartbreakView: View {
 
 struct CloseCallRow: View {
     let call: CloseCall
+    let trend: PullTrend?
     let isLast: Bool
 
     var body: some View {
@@ -111,6 +116,9 @@ struct CloseCallRow: View {
                     Text("\(call.pullCount) pulls")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.textSecondary)
+                    if let trend {
+                        PullTrendLabel(trend: trend)
+                    }
                 }
             }
             .padding(.vertical, Theme.trackerRowVPadding)

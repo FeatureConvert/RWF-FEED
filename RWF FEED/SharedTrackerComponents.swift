@@ -148,3 +148,19 @@ struct FadingDivider: View {
         .frame(height: 1)
     }
 }
+
+/// "Trending toward a kill" indicator — shown next to a live pull's percent on Bosses and
+/// Heartbreak. An app-derived estimate (see PullTrend), so this is deliberately understated
+/// rather than styled like a confident raider.io-sourced stat.
+struct PullTrendLabel: View {
+    let trend: PullTrend
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: trend.isStalled ? "minus" : (trend.isImproving ? "arrow.down.right" : "arrow.up.right"))
+            Text(trend.isStalled ? "Holding steady" : String(format: "%+.1f%% in the last hour", trend.percentChange))
+        }
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(trend.isImproving ? Theme.accentText : Theme.textSecondary)
+    }
+}

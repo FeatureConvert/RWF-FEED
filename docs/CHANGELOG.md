@@ -30,6 +30,9 @@ holds whatever's landed since the last one.
   "🏆 Race Complete!" push (separate from the final boss's own World First push), a "Final
   Standings" recap banner on the Bosses tab, and the Live Activity shows a proper "Race
   Complete — [Guild] wins!" card instead of going stale or blank.
+- Bosses and Heartbreak now show a "trending toward a kill" indicator (e.g. "−4.2% in the last
+  hour") next to a guild's live pull, once there's enough history to say something meaningful —
+  an app-derived estimate, not a raider.io number.
 
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused
