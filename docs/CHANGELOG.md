@@ -55,6 +55,15 @@ holds whatever's landed since the last one.
 - The Heartbreak tab's "close call" cutoff was hardcoded to 10%, completely separate from the
   Settings slider that (confusingly) only ever affected push notifications. Both now use the
   same threshold.
+- "Watch the Kill" VOD links (Bosses tab) never appeared for any raid, for any boss — a decoding
+  mismatch against raider.io's actual Hall of Fame response silently broke the fetch every time.
+  Now decodes correctly and VOD links show up as intended.
+- Feed post tags were showing raw internal values like "day-6" instead of anything readable.
+  Now only shows the guild-name tags, which are the only ones meant to be user-facing.
+- (Backend, not yet deployed) A Live Activity could get silently orphaned — the server was
+  wiping its entire token registry on every boss change instead of just the tokens it had
+  actually just sent an "end" update to, so a device registering at the wrong moment lost its
+  Live Activity's updates with no error and no way to recover short of restarting it.
 
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a

@@ -192,9 +192,14 @@ struct FeedPostRow: View {
                 }
             }
 
-            if !post.tags.isEmpty {
+            // Only "guild" tags (e.g. "Liquid", "Echo") have clean, human-presentable names —
+            // confirmed live against the feed API, the other categories are either raw internal
+            // slugs ("day-6", name === slug, not reformatted anywhere upstream) or messy
+            // free-form text (stray trailing commas, lowercase fragments like "wish"/"lost").
+            let presentableTags = post.tags.filter { $0.category == "guild" }
+            if !presentableTags.isEmpty {
                 HStack(spacing: 6) {
-                    ForEach(post.tags) { tag in
+                    ForEach(presentableTags) { tag in
                         Text(tag.name)
                             .font(Theme.tagLabel)
                             .tracking(Theme.tagLabelTracking)
