@@ -34,7 +34,12 @@ private struct RaidRankingsResponse: Decodable {
 
 private struct RaidRankingEntry: Decodable {
     let guild: GuildRef
+    let encountersDefeated: [EncounterDefeatEntry]
     let encountersPulled: [EncounterPullEntry]
+}
+
+private struct EncounterDefeatEntry: Decodable {
+    let slug: String
 }
 
 private struct GuildRef: Decodable {
@@ -83,10 +88,14 @@ enum RWFWatchData {
 
     private static let cacheKey = "RWFWatchData.lastKnownBossState"
 
-    /// The furthest-progressed boss anyone is currently pulling, plus whichever guild has the
-    /// best (lowest remaining health%) live pull on it. Falls back to the last successfully-
-    /// fetched state (persisted in UserDefaults) on any network/decode failure, so a transient
-    /// blip doesn't blank the watch app/complications until the next budgeted refresh.
+    /// The leading guild's (by confirmed kills) own next boss, plus whichever guild has the
+    /// best (lowest remaining health%) live pull on it. Deliberately anchored on the actual
+    /// leader's frontier rather than "whichever boss anyone has the highest-ordinal active pull
+    /// on" (the previous approach) — a guild merely scouting/wiping on a later boss without
+    /// having cleared the ones before it isn't actually ahead, and showing them as the headline
+    /// guild was misleading. Falls back to the last successfully-fetched state (persisted in
+    /// UserDefaults) on any network/decode failure, so a transient blip doesn't blank the watch
+    /// app/complications until the next budgeted refresh.
     static func fetchCurrentBoss() async -> WatchBossState? {
         if let fresh = await fetchFreshBoss() {
             if let data = try? JSONEncoder().encode(fresh) {
@@ -104,8 +113,6 @@ enum RWFWatchData {
             async let rankingsTask = fetchRankings()
             let (encounters, rankings) = try await (encountersTask, rankingsTask)
 
-            let encounterBySlug = Dictionary(uniqueKeysWithValues: encounters.map { ($0.slug, $0) })
-
             var bestPullBySlug: [String: (guild: String, percent: Double, pullCount: Int)] = [:]
             for entry in rankings {
                 for pull in entry.encountersPulled where !pull.isDefeated {
@@ -117,11 +124,16 @@ enum RWFWatchData {
                 }
             }
 
-            guard let frontierSlug = bestPullBySlug.keys.max(by: { (encounterBySlug[$0]?.ordinal ?? -1) < (encounterBySlug[$1]?.ordinal ?? -1) }),
-                  let boss = encounterBySlug[frontierSlug] else {
+            // The leader is whoever's confirmed at least as many kills as anyone else — not
+            // whoever has the highest-ordinal boss with an active pull recorded against it.
+            guard let leader = rankings.max(by: { $0.encountersDefeated.count < $1.encountersDefeated.count }) else {
                 return nil
             }
-            let best = bestPullBySlug[frontierSlug]
+            let defeatedByLeader = Set(leader.encountersDefeated.map(\.slug))
+            guard let boss = encounters.sorted(by: { $0.ordinal < $1.ordinal }).first(where: { !defeatedByLeader.contains($0.slug) }) else {
+                return nil // leader has cleared every boss in the raid
+            }
+            let best = bestPullBySlug[boss.slug]
 
             return WatchBossState(
                 bossName: boss.name, bossOrdinal: boss.ordinal + 1, totalBosses: encounters.count, iconUrl: boss.iconUrl,
