@@ -76,6 +76,12 @@ enum Theme {
     static let tagHPadding: CGFloat = 8
     static let tagVPadding: CGFloat = 3
     static let screenEdgeMargin: CGFloat = 16
+    /// Caps the whole app's width on iPad/landscape-iPhone — this is a single-column,
+    /// phone-shaped layout throughout (List/ScrollView content, a 6-item bottom tab bar), and
+    /// letting it stretch to a full iPad's width blows out card widths and spaces the tab bar
+    /// icons apart absurdly rather than looking like a real iPad layout. Matches the cap
+    /// FeedView already used for its own landscape centering before this existed app-wide.
+    static let maxContentWidth: CGFloat = 700
 
     // MARK: Typography
 

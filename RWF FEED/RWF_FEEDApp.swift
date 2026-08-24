@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 @main
 struct RWF_FEEDApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -25,6 +27,16 @@ struct RWF_FEEDApp: App {
                     // token) — belongs at the app level, not inside one tab's view model.
                     NotificationManager.shared.requestAuthorizationIfNeeded()
                 }
+        }
+        // Primary badge-clear trigger — scenePhase is the SwiftUI-native signal for this and
+        // fires reliably regardless of how the scene became active (cold launch, foreground,
+        // notification tap). AppDelegate.applicationDidBecomeActive does the same thing as a
+        // second, UIKit-side path; redundant but harmless, since setBadgeCount(0) twice is a
+        // no-op the second time.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                UNUserNotificationCenter.current().setBadgeCount(0)
+            }
         }
     }
 }

@@ -34,6 +34,8 @@ struct ContentView: View {
 
             CustomTabBar(selection: $selectedTab)
         }
+        .frame(maxWidth: Theme.maxContentWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.keyboard)
         .background(Theme.background)
         .onChange(of: selectedTab) { _, newValue in
