@@ -77,6 +77,8 @@ private struct HealthBar: View {
             }
         }
         .frame(height: 4)
+        // Decorative — the same remaining-health percent is always shown as text nearby.
+        .accessibilityHidden(true)
     }
 }
 

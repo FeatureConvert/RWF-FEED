@@ -32,6 +32,7 @@ struct BossBreakdownView: View {
                         HStack(spacing: 10) {
                             Image(systemName: "trophy.fill")
                                 .foregroundStyle(Theme.accent)
+                                .accessibilityHidden(true)
                             Text("Race Complete — View Final Standings")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(Theme.textPrimary)
@@ -39,6 +40,7 @@ struct BossBreakdownView: View {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Theme.textSecondary)
+                                .accessibilityHidden(true)
                         }
                         .padding(.horizontal, Theme.trackerRowHPadding)
                         .padding(.vertical, 12)
@@ -108,6 +110,28 @@ struct BossSummaryRow: View {
     let trend: PullTrend?
     let isLast: Bool
 
+    /// Combines the ordinal, boss name, and current status (World First / best pull / not
+    /// reached) into one sentence — rank number and the trailing timestamp are folded in
+    /// here too (and hidden individually below) so the whole row reads as one coherent stop
+    /// instead of four-plus disconnected Text fragments. The "Watch the Kill" link is
+    /// deliberately left out of this group (and out of scope entirely) so it stays its own
+    /// independently-reachable, actionable VoiceOver element.
+    private var accessibilitySummary: String {
+        var parts = ["Boss \(summary.boss.ordinal + 1), \(summary.boss.name)"]
+        if let worldFirst = summary.worldFirst {
+            parts.append("World First by \(worldFirst.guild.displayName)")
+            parts.append(RelativeTime.short(from: worldFirst.at))
+        } else if let bestPull = summary.bestPull {
+            parts.append("Best pull \(String(format: "%.2f%%", bestPull.percent)) by \(bestPull.guild.displayName), \(bestPull.pullCount) pulls")
+            if let trend {
+                parts.append(trend.isStalled ? "holding steady" : String(format: "%+.1f%% in the last hour", trend.percentChange))
+            }
+        } else {
+            parts.append("Not yet reached")
+        }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: Theme.trackerRowColumnGap) {
@@ -115,6 +139,8 @@ struct BossSummaryRow: View {
                     .font(Theme.rankNumber)
                     .foregroundStyle(Theme.textSecondary)
                     .frame(width: 22, alignment: .leading)
+                    // Folded into accessibilitySummary above.
+                    .accessibilityHidden(true)
 
                 AsyncImage(url: summary.boss.fullIconURL) { phase in
                     if let image = phase.image {
@@ -125,40 +151,47 @@ struct BossSummaryRow: View {
                 }
                 .frame(width: Theme.guildLogoDiameter, height: Theme.guildLogoDiameter)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(summary.boss.name)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.textPrimary)
+                    Group {
+                        Text(summary.boss.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Theme.textPrimary)
 
-                    if let worldFirst = summary.worldFirst {
-                        HStack(spacing: 4) {
-                            WorldFirstBadge()
-                            Text(worldFirst.guild.displayName)
+                        if let worldFirst = summary.worldFirst {
+                            HStack(spacing: 4) {
+                                WorldFirstBadge()
+                                Text(worldFirst.guild.displayName)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                        } else if let bestPull = summary.bestPull {
+                            Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) — \(bestPull.guild.displayName) (\(bestPull.pullCount) pulls)")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.textSecondary)
+                            if let trend {
+                                PullTrendLabel(trend: trend)
+                            }
+                        } else {
+                            Text("Not yet reached")
                                 .font(.system(size: 12))
                                 .foregroundStyle(Theme.textSecondary)
                         }
-                        if let vodURL = worldFirst.vodURL {
-                            Link(destination: vodURL) {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "play.circle.fill")
-                                    Text("Watch the Kill")
-                                }
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Theme.accentText)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(accessibilitySummary)
+
+                    if let worldFirst = summary.worldFirst, let vodURL = worldFirst.vodURL {
+                        Link(destination: vodURL) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "play.circle.fill")
+                                Text("Watch the Kill")
                             }
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Theme.accentText)
                         }
-                    } else if let bestPull = summary.bestPull {
-                        Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) — \(bestPull.guild.displayName) (\(bestPull.pullCount) pulls)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.textSecondary)
-                        if let trend {
-                            PullTrendLabel(trend: trend)
-                        }
-                    } else {
-                        Text("Not yet reached")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.textSecondary)
+                        .accessibilityLabel("Watch the kill VOD")
                     }
                 }
 
@@ -168,6 +201,8 @@ struct BossSummaryRow: View {
                     Text(RelativeTime.short(from: worldFirst.at))
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.textSecondary)
+                        // Folded into accessibilitySummary above.
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.vertical, Theme.trackerRowVPadding)

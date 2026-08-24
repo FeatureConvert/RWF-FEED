@@ -11,6 +11,7 @@ import SwiftUI
 struct KillFeedView: View {
     @StateObject private var viewModel = KillFeedViewModel()
     @State private var showingSettings = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Bosses collapsed by the user — absent means expanded, so a newly-appearing boss (one
     /// nobody's collapsed yet) always starts expanded rather than needing to be in some
     /// explicit "expanded" set.
@@ -56,7 +57,7 @@ struct KillFeedView: View {
                                     let isExpanded = !collapsedBossIDs.contains(group.boss.id)
                                     VStack(spacing: 0) {
                                         BossGroupHeader(boss: group.boss, isExpanded: isExpanded) {
-                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                                                 if isExpanded {
                                                     collapsedBossIDs.insert(group.boss.id)
                                                 } else {
@@ -126,12 +127,29 @@ struct BossGroupHeader: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture(perform: onToggle)
+        // A plain onTapGesture (not a Button) on a row of otherwise-separate icon/text/
+        // chevron children — without this, VoiceOver exposes the boss icon, name, and
+        // chevron as three unrelated stops and none of them expose the collapse/expand
+        // action. Collapsing to one element with an explicit button trait and value makes
+        // it behave like a real disclosure control under VoiceOver.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(boss.name)
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction {
+            onToggle()
+        }
     }
 }
 
 struct KillFeedRow: View {
     let event: KillFeedEvent
     let isLast: Bool
+
+    private var accessibilitySummary: String {
+        let rank = event.rank == 1 ? "World First" : event.rankLabel
+        return "\(event.guild.displayName), \(rank), \(RelativeTime.short(from: event.defeatedAt))"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -160,6 +178,8 @@ struct KillFeedRow: View {
             .padding(.vertical, 8)
             .padding(.leading, Theme.trackerRowHPadding + 36)
             .padding(.trailing, Theme.trackerRowHPadding)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilitySummary)
 
             if !isLast {
                 FadingDivider()

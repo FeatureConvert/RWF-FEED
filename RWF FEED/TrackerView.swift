@@ -114,46 +114,64 @@ struct GuildStandingRow: View {
     let isPinned: Bool
     let onTogglePin: () -> Void
 
+    /// This row packs rank + name + live status + realm/region + boss progress into one
+    /// line — read one Text at a time, VoiceOver users get four-plus disconnected fragments
+    /// per guild instead of a sentence. Everything except the pin button (which stays its
+    /// own reachable, actionable element) is grouped under this single label instead.
+    private var accessibilitySummary: String {
+        var parts = ["\(standing.guild.displayName), rank \(standing.rank)"]
+        if standing.isLive {
+            parts.append("live now")
+        }
+        parts.append("\(standing.bossesDown) of \(totalBosses) bosses down")
+        parts.append("\(standing.guild.realm.name), \(standing.guild.region.shortName)")
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: Theme.trackerRowColumnGap) {
-                Text("\(standing.rank)")
-                    .font(Theme.rankNumber)
-                    .foregroundStyle(Theme.textSecondary)
-                    .frame(width: 22, alignment: .leading)
+                HStack(spacing: Theme.trackerRowColumnGap) {
+                    Text("\(standing.rank)")
+                        .font(Theme.rankNumber)
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(width: 22, alignment: .leading)
 
-                GuildAvatar(guild: standing.guild)
+                    GuildAvatar(guild: standing.guild)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(standing.guild.displayName)
-                            .font(.system(size: 15, weight: .semibold))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(standing.guild.displayName)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                            if standing.isLive {
+                                LiveBadge()
+                            }
+                        }
+                        Text("\(standing.guild.realm.name) · \(standing.guild.region.shortName)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(standing.bossesDown)/\(totalBosses) M")
+                            .font(Theme.bossProgress)
                             .foregroundStyle(Theme.textPrimary)
-                        if standing.isLive {
-                            LiveBadge()
+                            .monospacedDigit()
+                        if let killedAt = standing.lastKillAt {
+                            TimelineView(.periodic(from: killedAt, by: 1)) { context in
+                                Text("For \(RelativeTime.elapsed(since: killedAt, to: context.date))")
+                            }
+                            .font(Theme.elapsedTimer)
+                            .foregroundStyle(Theme.textSecondary)
+                            .monospacedDigit()
                         }
                     }
-                    Text("\(standing.guild.realm.name) · \(standing.guild.region.shortName)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.textSecondary)
                 }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(standing.bossesDown)/\(totalBosses) M")
-                        .font(Theme.bossProgress)
-                        .foregroundStyle(Theme.textPrimary)
-                        .monospacedDigit()
-                    if let killedAt = standing.lastKillAt {
-                        TimelineView(.periodic(from: killedAt, by: 1)) { context in
-                            Text("For \(RelativeTime.elapsed(since: killedAt, to: context.date))")
-                        }
-                        .font(Theme.elapsedTimer)
-                        .foregroundStyle(Theme.textSecondary)
-                        .monospacedDigit()
-                    }
-                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilitySummary)
 
                 Button(action: onTogglePin) {
                     Image(systemName: isPinned ? "star.fill" : "star")
@@ -163,6 +181,7 @@ struct GuildStandingRow: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(isPinned ? "Unpin guild" : "Pin guild")
             }
             .padding(.vertical, Theme.trackerRowVPadding)
             .padding(.horizontal, Theme.trackerRowHPadding)

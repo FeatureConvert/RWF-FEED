@@ -152,6 +152,8 @@ struct SettingsView: View {
                             }
                         )
                         .tint(Theme.accent)
+                        .accessibilityLabel("Close Call Threshold")
+                        .accessibilityValue(String(format: "%.1f percent", draftThreshold))
                     }
                     .padding(.vertical, 2)
                     .popoverTip(CloseCallThresholdTip(), arrowEdge: .top)
@@ -195,6 +197,7 @@ struct SettingsView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 14, height: 14)
+                                .accessibilityHidden(true)
                             Text("Data provided by Raider.IO")
                                 .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)
@@ -209,6 +212,7 @@ struct SettingsView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 14, height: 14)
+                                .accessibilityHidden(true)
                             Text("News provided by Wowhead")
                                 .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)

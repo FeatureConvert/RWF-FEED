@@ -57,6 +57,10 @@ struct GuildAvatar: View {
         .task(id: guild.logo) {
             await load()
         }
+        // Purely decorative — the guild name it represents is always rendered as text
+        // right next to it, so VoiceOver announcing "image" (or the initials as if they
+        // were meaningful text) would just be noise ahead of the real content.
+        .accessibilityHidden(true)
     }
 
     /// Not AsyncImage: guild logos are served through Cloudflare Polish (raider.io's CDN),
@@ -146,6 +150,8 @@ struct FadingDivider: View {
             )
         }
         .frame(height: 1)
+        // A hairline rule between rows — decorative, not content.
+        .accessibilityHidden(true)
     }
 }
 
@@ -158,6 +164,11 @@ struct PullTrendLabel: View {
     var body: some View {
         HStack(spacing: 3) {
             Image(systemName: trend.isStalled ? "minus" : (trend.isImproving ? "arrow.down.right" : "arrow.up.right"))
+                // The text alongside it already says the same thing in words ("Holding
+                // steady" / "+2.1% in the last hour") — without this, VoiceOver announces
+                // the SF Symbol's own name ("minus", "arrow down right") as a redundant,
+                // confusing extra stop right before reading the text that explains it.
+                .accessibilityHidden(true)
             Text(trend.isStalled ? "Holding steady" : String(format: "%+.1f%% in the last hour", trend.percentChange))
         }
         .font(.system(size: 11, weight: .medium))

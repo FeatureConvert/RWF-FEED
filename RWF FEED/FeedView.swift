@@ -119,6 +119,9 @@ struct ScreenHeader: View {
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
                                     .frame(width: 12, height: 12)
+                                    // Decorative mark next to the credit text — the Link's
+                                    // label already reads fine from creditLabel alone.
+                                    .accessibilityHidden(true)
                             }
                             Text(creditLabel)
                                 .font(.system(size: 11))
@@ -143,6 +146,7 @@ struct ScreenHeader: View {
                     Image(systemName: "gearshape")
                         .foregroundStyle(Theme.textSecondary)
                 }
+                .accessibilityLabel("Settings")
             }
         }
         .padding(.top, 8)
@@ -172,6 +176,7 @@ struct FeedPostRow: View {
                     Image(systemName: "star.fill")
                         .font(.system(size: 14))
                         .foregroundStyle(Theme.star)
+                        .accessibilityLabel("Priority post")
                 }
                 Spacer()
                 Text(RelativeTime.short(from: post.publishedAt))

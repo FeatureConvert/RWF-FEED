@@ -276,6 +276,8 @@ private struct BossIcon: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        // Decorative — the boss name it illustrates is always rendered as text next to it.
+        .accessibilityHidden(true)
     }
 }
 

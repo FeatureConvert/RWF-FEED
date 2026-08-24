@@ -80,6 +80,20 @@ struct CloseCallRow: View {
     let trend: PullTrend?
     let isLast: Bool
 
+    /// No embedded links/buttons here, unlike BossSummaryRow, so the whole row can safely
+    /// collapse into one VoiceOver stop instead of guild name / boss name / percent / pull
+    /// count / trend arriving as five disconnected fragments.
+    private var accessibilitySummary: String {
+        var parts = [
+            "\(call.guild.displayName), \(call.boss.name)",
+            "\(String(format: "%.2f%%", call.percent)) remaining, \(call.pullCount) pulls",
+        ]
+        if let trend {
+            parts.append(trend.isStalled ? "holding steady" : String(format: "%+.1f%% in the last hour", trend.percentChange))
+        }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: Theme.trackerRowColumnGap) {
@@ -99,6 +113,7 @@ struct CloseCallRow: View {
                         }
                         .frame(width: 16, height: 16)
                         .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                        .accessibilityHidden(true)
 
                         Text(call.boss.name)
                             .font(.system(size: 13))
@@ -123,6 +138,8 @@ struct CloseCallRow: View {
             }
             .padding(.vertical, Theme.trackerRowVPadding)
             .padding(.horizontal, Theme.trackerRowHPadding)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilitySummary)
 
             if !isLast {
                 FadingDivider()

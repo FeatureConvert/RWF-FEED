@@ -55,6 +55,8 @@ struct WatchContentView: View {
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(Color.accentColor)
                             }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Rank \(index + 1), \(standing.guildName), \(standing.bossesDown) bosses down")
                         }
                     }
                 } else if isLoading {

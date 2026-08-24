@@ -36,6 +36,11 @@ struct RaceLiveActivityWidget: Widget {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(WidgetTheme.accent)
+                            // The bottom region's full sentence already says the race is
+                            // over, so this icon is redundant there — but it's the *only*
+                            // content in compactLeading/minimal below, where it needs its
+                            // own label instead.
+                            .accessibilityHidden(true)
                     }
                     DynamicIslandExpandedRegion(.trailing) {
                         Text("COMPLETE")
@@ -52,12 +57,14 @@ struct RaceLiveActivityWidget: Widget {
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(WidgetTheme.accent)
+                        .accessibilityLabel("Race complete")
                 } compactTrailing: {
                     EmptyView()
                 } minimal: {
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(WidgetTheme.accent)
+                        .accessibilityLabel("Race complete")
                 }
             }
             return DynamicIsland {
@@ -98,6 +105,8 @@ struct RaceLiveActivityWidget: Widget {
                         .monospacedDigit()
                 }
                 .foregroundStyle(WidgetTheme.accent)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Boss \(context.state.bossOrdinal)")
             } compactTrailing: {
                 if let percent = context.state.bestPercent {
                     Text(String(format: "%.1f%%", percent))
@@ -119,6 +128,7 @@ struct RaceLiveActivityWidget: Widget {
                     Image(systemName: "flag.checkered")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(WidgetTheme.accent)
+                        .accessibilityLabel("Race in progress")
                 }
             }
         }
@@ -144,6 +154,7 @@ private struct RaceLiveActivityLockScreenView: View {
             }
             .frame(width: 44, height: 44)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("BOSS \(state.bossOrdinal)/\(state.totalBosses)")
@@ -185,6 +196,7 @@ private struct RaceCompleteLockScreenView: View {
                 .font(.system(size: 28))
                 .foregroundStyle(WidgetTheme.accent)
                 .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("RACE COMPLETE")

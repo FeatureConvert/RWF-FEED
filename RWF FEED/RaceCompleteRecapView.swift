@@ -37,6 +37,8 @@ struct RaceCompleteRecapView: View {
                     .padding(.vertical, 12)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(winner.map { "Race Complete. \($0.guild.displayName) wins!" } ?? "Race Complete")
                 }
 
                 Section {
@@ -55,6 +57,8 @@ struct RaceCompleteRecapView: View {
                                 .foregroundStyle(Theme.textSecondary)
                         }
                         .listRowBackground(Theme.cardSurface)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Rank \(index + 1), \(standing.guild.displayName), \(standing.bossesDown) of \(summaries.count) bosses down")
                     }
                 } header: {
                     Text("Final Standings")
@@ -64,20 +68,26 @@ struct RaceCompleteRecapView: View {
                 Section {
                     ForEach(summaries) { summary in
                         HStack(spacing: 10) {
-                            Text(summary.boss.name)
-                                .font(.system(size: 14))
-                                .foregroundStyle(Theme.textPrimary)
-                            Spacer()
-                            if let worldFirst = summary.worldFirst {
-                                Text(worldFirst.guild.displayName)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Theme.textSecondary)
-                                if let vodURL = worldFirst.vodURL {
-                                    Link(destination: vodURL) {
-                                        Image(systemName: "play.circle.fill")
-                                            .foregroundStyle(Theme.accentText)
-                                    }
+                            Group {
+                                Text(summary.boss.name)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(Theme.textPrimary)
+                                Spacer()
+                                if let worldFirst = summary.worldFirst {
+                                    Text(worldFirst.guild.displayName)
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(Theme.textSecondary)
                                 }
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(summary.worldFirst.map { "\(summary.boss.name), World First by \($0.guild.displayName)" } ?? summary.boss.name)
+
+                            if let worldFirst = summary.worldFirst, let vodURL = worldFirst.vodURL {
+                                Link(destination: vodURL) {
+                                    Image(systemName: "play.circle.fill")
+                                        .foregroundStyle(Theme.accentText)
+                                }
+                                .accessibilityLabel("Watch the kill VOD")
                             }
                         }
                         .listRowBackground(Theme.cardSurface)

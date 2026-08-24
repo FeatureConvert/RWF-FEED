@@ -33,6 +33,13 @@ holds whatever's landed since the last one.
 - Bosses and Heartbreak now show a "trending toward a kill" indicator (e.g. "−4.2% in the last
   hour") next to a guild's live pull, once there's enough history to say something meaningful —
   an app-derived estimate, not a raider.io number.
+- VoiceOver accessibility pass across the app, widgets, and watch app: dense stat rows (Tracker,
+  Bosses, Heartbreak, Kills, Final Standings, watch Top 3) now read as one coherent sentence
+  instead of each guild name/percent/pull count/rank arriving as separate disconnected stops;
+  icon-only controls (Settings gear, boss-group disclosure row, pin button, VOD links) got real
+  labels; purely decorative art (guild avatars, dividers, trend arrows, boss icons) is hidden
+  from VoiceOver instead of announced as noise; and the Kills tab's expand/collapse animation now
+  respects Reduce Motion.
 
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused
