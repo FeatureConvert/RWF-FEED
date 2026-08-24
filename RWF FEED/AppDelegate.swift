@@ -34,6 +34,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         PushRegistration.register(deviceToken: deviceToken)
     }
 
+    // The push Worker always requests badge: 1 (see push-service/src/worker.js — there's no
+    // real per-device unread count to send), so it never clears itself. Clearing here on every
+    // foreground means it reads as "there's something new" rather than getting stuck on
+    // forever after the user's already seen it.
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        UNUserNotificationCenter.current().setBadgeCount(0)
+    }
+
     func application(
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error

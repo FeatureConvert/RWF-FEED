@@ -444,7 +444,13 @@ async function sendPush(env, deviceToken, title, body, collapseId) {
         "apns-priority": "10",
         "apns-collapse-id": collapseId,
       },
-      body: JSON.stringify({ aps: { alert: { title, body }, sound: "default" } }),
+      // iOS only shows an app-icon badge when the payload explicitly requests one — we don't
+      // track a real per-device unread count (nothing server-side knows what the user has
+      // actually seen), so this always requests 1 rather than an incrementing number. The app
+      // clears it back to 0 on foreground (see AppDelegate), so in practice it reads as "there's
+      // something new" rather than a true count, which is the best we can do without adding
+      // read-state tracking.
+      body: JSON.stringify({ aps: { alert: { title, body }, sound: "default", badge: 1 } }),
     });
   } catch (error) {
     console.log("APNs request failed", deviceToken, error);
