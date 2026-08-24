@@ -15,3 +15,11 @@ CREATE TABLE IF NOT EXISTS cron_state (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- ActivityKit push-to-update tokens for the race Live Activity, registered from Settings (see
+-- RaceLiveActivityController.swift). A separate registry from `devices` — different push type
+-- entirely (liveactivity vs. alert), and the app can have a Live Activity running independent
+-- of whether regular push notifications are also on.
+CREATE TABLE IF NOT EXISTS live_activity_tokens (
+  push_token TEXT PRIMARY KEY
+);

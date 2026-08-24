@@ -10,6 +10,7 @@ import SwiftUI
 struct RWFFeedWidgetBundle: WidgetBundle {
     var body: some Widget {
         RWFFeedWidget()
+        RaceLiveActivityWidget()
     }
 }
 

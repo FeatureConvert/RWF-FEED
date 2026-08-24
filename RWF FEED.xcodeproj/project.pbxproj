@@ -22,10 +22,13 @@
 		99747713BC32C8CB676E143C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26CFBA99BA22E00688D45301 /* WidgetKit.framework */; };
 		9D6BC6EB2420F04FF2650FE3 /* RWFFeedComplicationBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A45C41158DB5931A5639E86 /* RWFFeedComplicationBundle.swift */; };
 		B6937C793597B7208A49F70E /* RWFTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B016037217970D48E9B20492 /* RWFTimelineProvider.swift */; };
+		B897EAD422CD64D1DA0668FD /* RaceLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1A38BB79DF6DEC98F3C2F0 /* RaceLiveActivityAttributes.swift */; };
 		CB49995C3F15B23B6B0EDA59 /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */; };
 		DAF49A97934B34C03F5046D8 /* WatchBossData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1341E8B91172A51C41788B /* WatchBossData.swift */; };
+		E2F13BCFA4F96E60E780158E /* RaceLiveActivityWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BCC75595DB33ED9E0A1464 /* RaceLiveActivityWidgetView.swift */; };
 		E3320F950AC76E32CE22E9E0 /* RWFFeedWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C77DA0A1270484D9E8872BDC /* RWFFeedWatchApp.swift */; };
 		E554C0883FA3F4A7A0CDE89F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B0FC18F1A181B80156803148 /* Foundation.framework */; };
+		E8ED0116724A303F87BEB7ED /* RaceLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1A38BB79DF6DEC98F3C2F0 /* RaceLiveActivityAttributes.swift */; };
 		E8F3F7B7E38C8E0627E0DF40 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 18F42ADCDDA7E5EAEDCD036B /* SwiftUI.framework */; };
 		EB944B76EBF7C185598C8113 /* ComplicationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEA045C842E7ED488BD1FA67 /* ComplicationProvider.swift */; };
 		EC2F9FC4F1AC04E2383E676C /* WatchBossData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1341E8B91172A51C41788B /* WatchBossData.swift */; };
@@ -99,6 +102,7 @@
 		18F42ADCDDA7E5EAEDCD036B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
 		2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetTheme.swift; sourceTree = "<group>"; };
 		26CFBA99BA22E00688D45301 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
+		30BCC75595DB33ED9E0A1464 /* RaceLiveActivityWidgetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RaceLiveActivityWidgetView.swift; sourceTree = "<group>"; };
 		31F831C719898E6B6FBA15AB /* RWFFeedWidgetEntryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWidgetEntryView.swift; sourceTree = "<group>"; };
 		36F74ED266B4954D24630CCB /* RWFFeedWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFFeedWidgetBundle.swift; sourceTree = "<group>"; };
 		37F57A7D0CB23310DDBBFA27 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
@@ -113,6 +117,7 @@
 		9927B1D126D5067B693EEF6B /* WidgetData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
 		9DF911F1303A41EC001688F0 /* RWF FEED.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RWF FEED.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4AC416F02B6E09B87A86311 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		AC1A38BB79DF6DEC98F3C2F0 /* RaceLiveActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RaceLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		B016037217970D48E9B20492 /* RWFTimelineProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RWFTimelineProvider.swift; sourceTree = "<group>"; };
 		B0FC18F1A181B80156803148 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		B3AECB949A34106095408BC4 /* WatchContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchContentView.swift; sourceTree = "<group>"; };
@@ -184,6 +189,15 @@
 			path = RWFFeedWatchWidget;
 			sourceTree = "<group>";
 		};
+		2A37C3E6E59EB6F92AC3F3BD /* RWFLiveActivityShared */ = {
+			isa = PBXGroup;
+			children = (
+				AC1A38BB79DF6DEC98F3C2F0 /* RaceLiveActivityAttributes.swift */,
+			);
+			name = RWFLiveActivityShared;
+			path = RWFLiveActivityShared;
+			sourceTree = "<group>";
+		};
 		3B8057A2366DD0C4D8531881 /* watchOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -203,6 +217,7 @@
 				9927B1D126D5067B693EEF6B /* WidgetData.swift */,
 				2382A3145CF6CD8A9B9BB793 /* WidgetTheme.swift */,
 				41F8DFD60407DF3638828304 /* Info.plist */,
+				30BCC75595DB33ED9E0A1464 /* RaceLiveActivityWidgetView.swift */,
 			);
 			path = RWFFeedWidget;
 			sourceTree = "<group>";
@@ -238,6 +253,7 @@
 				8449B6AF21786E8FB537C04F /* RWFFeedWatch */,
 				0D6228B9A286500D4BE04E50 /* RWFFeedWatchWidget */,
 				CF785ABD45C0EB17B9FA541F /* RWFWatchShared */,
+				2A37C3E6E59EB6F92AC3F3BD /* RWFLiveActivityShared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -445,6 +461,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E8ED0116724A303F87BEB7ED /* RaceLiveActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -457,6 +474,8 @@
 				B6937C793597B7208A49F70E /* RWFTimelineProvider.swift in Sources */,
 				70DB6DC2CBBD55BADFA1DEEF /* WidgetData.swift in Sources */,
 				CB49995C3F15B23B6B0EDA59 /* WidgetTheme.swift in Sources */,
+				B897EAD422CD64D1DA0668FD /* RaceLiveActivityAttributes.swift in Sources */,
+				E2F13BCFA4F96E60E780158E /* RaceLiveActivityWidgetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -751,6 +770,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Azeroth Watch";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -786,6 +806,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Azeroth Watch";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

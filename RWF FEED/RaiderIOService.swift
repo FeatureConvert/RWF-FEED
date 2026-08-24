@@ -259,6 +259,29 @@ extension RaidInfo {
             .map { boss in BossSummary(boss: boss, worldFirst: worldFirstBySlug[boss.slug], bestPull: bestPullBySlug[boss.slug]) }
     }
 
+    /// The leading guild's (by confirmed kills) own next boss, plus whichever guild has the
+    /// best live pull on it — the same "leader's frontier" definition WatchBossData/WidgetData
+    /// use for their own headline stat (those targets keep small independent decoding copies
+    /// rather than sharing RaiderIOService's types, so this is a third, in-sync
+    /// implementation). Deliberately always world-scoped, ignoring the app's region filter —
+    /// same reasoning as WorldFirstBadge/push notifications: a Live Activity called "the race"
+    /// should track the true global leader, not a region-filtered one.
+    func leaderNextBossSummary(rankings: [RaidRankingEntry]) -> RaceLiveActivityAttributes.ContentState? {
+        guard let leader = rankings.max(by: { $0.encountersDefeated.count < $1.encountersDefeated.count }) else {
+            return nil
+        }
+        let defeatedByLeader = Set(leader.encountersDefeated.map(\.slug))
+        guard let boss = encounters.sorted(by: { $0.ordinal < $1.ordinal }).first(where: { !defeatedByLeader.contains($0.slug) }) else {
+            return nil // leader has cleared every boss in the raid
+        }
+        let best = bossSummaries(rankings: rankings).first { $0.boss.slug == boss.slug }?.bestPull
+
+        return RaceLiveActivityAttributes.ContentState(
+            bossName: boss.name, bossOrdinal: boss.ordinal + 1, totalBosses: encounters.count,
+            bestGuildName: best?.guild.displayName, bestPercent: best?.percent, pullCount: best?.pullCount
+        )
+    }
+
     /// Every guild's best pull on a boss they personally haven't killed yet, across the whole
     /// raid (not just each boss's single frontrunner) — sorted closest-to-a-kill first, and
     /// limited to genuinely close calls (under `maxPercent` remaining health) rather than

@@ -16,7 +16,10 @@ struct SettingsView: View {
     @ObservedObject private var notificationPreferences = NotificationPreferences.shared
     @ObservedObject private var defaultTabSettings = DefaultTabSettings.shared
     @ObservedObject private var regionFilter = RegionFilter.shared
+    @ObservedObject private var liveActivity = RaceLiveActivityController.shared
     @State private var showingMailCompose = false
+    @State private var isStartingLiveActivity = false
+    @State private var liveActivityErrorMessage: String?
     /// The slider's live value while dragging. Bound separately from
     /// notificationPreferences.heartbreakThresholdPercent, whose didSet fires a network POST —
     /// binding the slider straight to that would fire one POST per drag tick, and since
@@ -69,6 +72,37 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.textSecondary)
                 } footer: {
                     Text("Filters Tracker, Kills, Bosses, and Heartbreak to one region's guilds. Push notifications always reflect the true global race regardless of this filter.")
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .listRowBackground(Theme.cardSurface)
+
+                Section {
+                    if liveActivity.isActive {
+                        Button(role: .destructive) {
+                            liveActivity.stop()
+                        } label: {
+                            Label("Stop Live Activity", systemImage: "stop.circle")
+                        }
+                    } else {
+                        Button {
+                            startLiveActivity()
+                        } label: {
+                            if isStartingLiveActivity {
+                                HStack {
+                                    ProgressView()
+                                    Text("Starting…")
+                                }
+                            } else {
+                                Label("Start Live Activity", systemImage: "bolt.badge.clock")
+                            }
+                        }
+                        .disabled(isStartingLiveActivity)
+                    }
+                } header: {
+                    Text("Live Activity")
+                        .foregroundStyle(Theme.textSecondary)
+                } footer: {
+                    Text("Shows the race leader's current boss and best live pull on your Lock Screen and in the Dynamic Island, updating in real time even while the app is closed. Always tracks the true global leader, regardless of the Region filter above.")
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .listRowBackground(Theme.cardSurface)
@@ -209,6 +243,14 @@ struct SettingsView: View {
         .sheet(isPresented: $showingMailCompose) {
             MailComposeView()
         }
+        .alert("Couldn't Start Live Activity", isPresented: Binding(
+            get: { liveActivityErrorMessage != nil },
+            set: { if !$0 { liveActivityErrorMessage = nil } }
+        )) {
+            Button("OK") { liveActivityErrorMessage = nil }
+        } message: {
+            Text(liveActivityErrorMessage ?? "")
+        }
     }
 
     private func sendFeedback() {
@@ -216,6 +258,25 @@ struct SettingsView: View {
             showingMailCompose = true
         } else if let url = FeedbackMail.mailtoURL {
             openURL(url)
+        }
+    }
+
+    private func startLiveActivity() {
+        isStartingLiveActivity = true
+        Task {
+            defer { isStartingLiveActivity = false }
+            do {
+                async let trackerTask = RaiderIOService.shared.fetchTracker(region: "world")
+                async let rankingsTask = RaiderIOService.shared.fetchRaidRankings(region: "world")
+                let (tracker, rankings) = try await (trackerTask, rankingsTask)
+                guard let content = tracker.raid.leaderNextBossSummary(rankings: rankings) else {
+                    liveActivityErrorMessage = "The race hasn't started yet — check back once guilds are pulling."
+                    return
+                }
+                liveActivity.start(content: content)
+            } catch {
+                liveActivityErrorMessage = "Couldn't reach raider.io. Try again in a moment."
+            }
         }
     }
 }

@@ -50,6 +50,9 @@ const DEVICE_TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
 // the URL (it's in the app binary) could grow `devices` unboundedly by POSTing junk tokens in
 // a loop, and every cron tick then attempts an APNs send per junk entry.
 const MAX_DEVICES = 200;
+// Same shape/reasoning as MAX_DEVICES — /live-activity/register is also unauthenticated.
+const MAX_LIVE_ACTIVITIES = 50;
+const LIVE_ACTIVITY_STATE_KEY = "liveActivityState";
 
 export default {
   // Two independent cron triggers fire this (see wrangler.toml): "*/15 * * * *" also matches
@@ -80,6 +83,36 @@ export default {
         notifyNonWorldFirstHeartbreaks: body.notifyNonWorldFirstHeartbreaks,
       });
       if (!added) return new Response("Too many registered devices", { status: 429 });
+      return new Response("OK");
+    }
+
+    // Registers/unregisters the push-to-update token for the race Live Activity (see
+    // RaceLiveActivityController.swift) — a different token from /register's regular device
+    // token, even though both happen to be 64-hex-char APNs tokens.
+    if (request.method === "POST" && url.pathname === "/live-activity/register") {
+      const body = await request.json().catch(() => null);
+      if (!body || typeof body.pushToken !== "string" || !DEVICE_TOKEN_PATTERN.test(body.pushToken)) {
+        return new Response("Invalid pushToken", { status: 400 });
+      }
+      const existing = await env.DB.prepare("SELECT 1 FROM live_activity_tokens WHERE push_token = ?")
+        .bind(body.pushToken)
+        .first();
+      if (!existing) {
+        const countRow = await env.DB.prepare("SELECT COUNT(*) as count FROM live_activity_tokens").first();
+        if (countRow.count >= MAX_LIVE_ACTIVITIES) return new Response("Too many live activities", { status: 429 });
+      }
+      await env.DB.prepare("INSERT INTO live_activity_tokens (push_token) VALUES (?) ON CONFLICT(push_token) DO NOTHING")
+        .bind(body.pushToken)
+        .run();
+      return new Response("OK");
+    }
+
+    if (request.method === "POST" && url.pathname === "/live-activity/unregister") {
+      const body = await request.json().catch(() => null);
+      if (!body || typeof body.pushToken !== "string") {
+        return new Response("Invalid pushToken", { status: 400 });
+      }
+      await env.DB.prepare("DELETE FROM live_activity_tokens WHERE push_token = ?").bind(body.pushToken).run();
       return new Response("OK");
     }
 
@@ -190,7 +223,12 @@ async function checkForNewPosts(env) {
 /// the same two fetches every minute.
 async function checkRaiderIOEvents(env) {
   const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
-  if (devices.length === 0) return { ok: true, watchedDevices: 0 };
+  const liveActivityTokens = await getLiveActivityTokens(env);
+  // Live Activities are a separate registry from push devices — someone could in principle
+  // have one running without any raiderioEnabled device (unlikely in practice, since app
+  // launch always tries to register a device token too, but cheap to handle correctly rather
+  // than silently skipping their updates).
+  if (devices.length === 0 && liveActivityTokens.length === 0) return { ok: true, watchedDevices: 0 };
 
   const [raceResp, rankResp] = await Promise.all([
     fetch(`https://raider.io/api/raids/raid-race?raid=${RAID_SLUG}&region=world&difficulty=mythic`),
@@ -208,12 +246,13 @@ async function checkRaiderIOEvents(env) {
   const rankData = await rankResp.json();
   const rankings = rankData.raidRankings || [];
 
-  const [heartbreaks, worldFirsts] = await Promise.all([
+  const [heartbreaks, worldFirsts, liveActivity] = await Promise.all([
     checkHeartbreaks(env, rankings, encounterBySlug, devices),
     checkWorldFirstKills(env, rankings, encounterBySlug, devices),
+    checkLiveActivity(env, rankings, encounterBySlug, liveActivityTokens),
   ]);
 
-  return { ok: true, watchedDevices: devices.length, heartbreaks, worldFirsts };
+  return { ok: true, watchedDevices: devices.length, heartbreaks, worldFirsts, liveActivity };
 }
 
 /// "Major Heartbreaker" pushes: a guild pulling a boss down to a new-record-low remaining
@@ -334,6 +373,128 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
   // Same reasoning as HEARTBREAK_BEST_KEY above — only write when a boss was newly claimed.
   if (changed) await setCronState(env, WORLD_FIRST_SEEN_KEY, JSON.stringify(nextSeen));
   return { pushCount };
+}
+
+/// Keeps every registered race Live Activity in sync with the true global leader's (most
+/// confirmed kills, ignoring nothing regional — see client-side leaderNextBossSummary's own
+/// comment for why) own next undefeated boss and the best live pull on it. Same "leader's
+/// frontier" definition the watchOS app and Home Screen widget use, computed a third time here
+/// in JS rather than shared — this Worker and the Swift targets are different languages
+/// entirely, unlike RaceLiveActivityAttributes, which genuinely can be one shared Swift file.
+///
+/// Sends an "end" event (with the old boss's final numbers) the moment the tracked boss
+/// changes — the leader killed it — rather than silently morphing the activity into the next
+/// boss; the user starts a fresh one from Settings for that. Sends an "update" event only when
+/// the content actually changed since last tick, not on every single cron minute.
+async function checkLiveActivity(env, rankings, encounterBySlug, tokens) {
+  if (tokens.length === 0) return { ok: true, skipped: "no registered activities" };
+
+  const leader = rankings.reduce((best, entry) => {
+    return !best || entry.encountersDefeated.length > best.encountersDefeated.length ? entry : best;
+  }, null);
+  if (!leader) return { ok: true, skipped: "no leader" };
+
+  const defeatedByLeader = new Set(leader.encountersDefeated.map((d) => d.slug));
+  const orderedSlugs = Object.keys(encounterBySlug).sort(
+    (a, b) => encounterBySlug[a].ordinal - encounterBySlug[b].ordinal
+  );
+  const nextSlug = orderedSlugs.find((slug) => !defeatedByLeader.has(slug));
+  if (!nextSlug) return { ok: true, skipped: "raid cleared" };
+
+  const boss = encounterBySlug[nextSlug];
+  let best = null;
+  for (const entry of rankings) {
+    const pull = entry.encountersPulled.find((p) => p.slug === nextSlug && !p.isDefeated);
+    if (!pull || typeof pull.bestPercent !== "number" || typeof pull.numPulls !== "number") continue;
+    if (!best || pull.bestPercent < best.percent) {
+      best = { guild: entry.guild.displayName, percent: pull.bestPercent, pullCount: pull.numPulls };
+    }
+  }
+
+  const contentState = {
+    bossName: boss.name,
+    bossOrdinal: boss.ordinal + 1,
+    totalBosses: Object.keys(encounterBySlug).length,
+    bestGuildName: best?.guild ?? null,
+    bestPercent: best?.percent ?? null,
+    pullCount: best?.pullCount ?? null,
+  };
+
+  const previousRaw = await getCronState(env, LIVE_ACTIVITY_STATE_KEY);
+  const previous = previousRaw ? JSON.parse(previousRaw) : null;
+
+  if (previous && previous.bossSlug !== nextSlug) {
+    await endAllLiveActivities(env, tokens, previous.contentState);
+    await setCronState(env, LIVE_ACTIVITY_STATE_KEY, JSON.stringify({ bossSlug: nextSlug, contentState }));
+    return { ok: true, ended: previous.bossSlug, nowTracking: nextSlug };
+  }
+
+  if (previous && JSON.stringify(previous.contentState) === JSON.stringify(contentState)) {
+    return { ok: true, unchanged: true };
+  }
+
+  await setCronState(env, LIVE_ACTIVITY_STATE_KEY, JSON.stringify({ bossSlug: nextSlug, contentState }));
+  for (const token of tokens) {
+    await sendLiveActivityPush(env, token, "update", contentState);
+  }
+  return { ok: true, updated: nextSlug };
+}
+
+async function getLiveActivityTokens(env) {
+  const { results } = await env.DB.prepare("SELECT push_token FROM live_activity_tokens").all();
+  return results.map((r) => r.push_token);
+}
+
+async function endAllLiveActivities(env, tokens, finalContentState) {
+  for (const token of tokens) {
+    await sendLiveActivityPush(env, token, "end", finalContentState);
+  }
+  // Every activity just got told to end — the registry should be empty now regardless (a
+  // fresh registration for the next boss lands in a following /live-activity/register call,
+  // same as the app re-registering a rotated device push token).
+  await env.DB.prepare("DELETE FROM live_activity_tokens").run();
+}
+
+/// A Live Activity push is a silent content update, not a user-visible notification — no
+/// alert/sound/badge, and a different push type/topic suffix from sendPush's regular alerts.
+async function sendLiveActivityPush(env, pushToken, event, contentState) {
+  let res;
+  try {
+    const jwt = await getApnsJwt(env);
+    const apnsHost =
+      (env.APNS_ENV || "sandbox") === "production"
+        ? "https://api.push.apple.com"
+        : "https://api.sandbox.push.apple.com";
+
+    res = await fetch(`${apnsHost}/3/device/${pushToken}`, {
+      method: "POST",
+      headers: {
+        authorization: `bearer ${jwt}`,
+        "apns-topic": `${env.APNS_BUNDLE_ID}.push-type.liveactivity`,
+        "apns-push-type": "liveactivity",
+        "apns-priority": "10",
+      },
+      body: JSON.stringify({
+        aps: {
+          timestamp: Math.floor(Date.now() / 1000),
+          event,
+          "content-state": contentState,
+          ...(event === "end" ? { "dismissal-date": Math.floor(Date.now() / 1000) + 60 } : {}),
+        },
+      }),
+    });
+  } catch (error) {
+    console.log("Live Activity push failed", pushToken, error);
+    return;
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.log("Live Activity push error", pushToken, res.status, text);
+    if (res.status === 410 || text.includes("BadDeviceToken")) {
+      await env.DB.prepare("DELETE FROM live_activity_tokens WHERE push_token = ?").bind(pushToken).run();
+    }
+  }
 }
 
 /// New WoW news pushes — Wowhead's public "retail" RSS feed (WoW only, no Diablo/other-game

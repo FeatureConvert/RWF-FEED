@@ -18,6 +18,9 @@ holds whatever's landed since the last one.
 - Notifications now open directly to the relevant tab (new post → Feed, Major Heartbreaker →
   Heartbreak, World First!/Spoiler Alert → Kills, WoW News → News) instead of whatever Default
   Tab happens to be set.
+- Live Activity (Settings → Live Activity → Start) showing the race leader's next boss and the
+  best current pull on it, on the Lock Screen and in the Dynamic Island. Kept live by the server
+  even when the app is closed — no need to reopen it for updates.
 
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused
