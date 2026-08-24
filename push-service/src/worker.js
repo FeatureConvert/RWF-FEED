@@ -406,10 +406,16 @@ function decodeXmlEntities(str) {
 }
 
 // Collapses any run of whitespace (including tabs/newlines — raider.io's contentPreview has
-// been seen with a literal tab embedded mid-sentence) into a single space, and trims the ends.
+// been seen with a literal tab embedded mid-sentence) into a single space, then inserts a
+// space wherever sentence-ending punctuation is immediately followed by a capital letter with
+// none — also seen for real ("...Sentinels!Congratulations Instant_Dollars...", genuinely no
+// space in the source at all, not a whitespace-run problem this collapse alone would catch).
 function normalizeWhitespace(str) {
   if (!str) return str;
-  return str.replace(/\s+/g, " ").trim();
+  return str
+    .replace(/\s+/g, " ")
+    .replace(/([.!?])([A-Z])/g, "$1 $2")
+    .trim();
 }
 
 // ---- APNs ----
