@@ -13,6 +13,7 @@ import SwiftUI
 struct BossBreakdownView: View {
     @StateObject private var viewModel = BossBreakdownViewModel()
     @State private var showingSettings = false
+    @State private var showingRecap = false
     /// See FeedView's isActive doc comment — ContentView keeps every visited tab mounted, so
     /// polling has to be paused/resumed off this instead of .onDisappear (which never fires).
     var isActive: Bool = true
@@ -22,6 +23,28 @@ struct BossBreakdownView: View {
             VStack(spacing: 0) {
                 ScreenHeader(title: "Boss List", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
                     showingSettings = true
+                }
+
+                if viewModel.isRaceComplete {
+                    Button {
+                        showingRecap = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "trophy.fill")
+                                .foregroundStyle(Theme.accent)
+                            Text("Race Complete — View Final Standings")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .padding(.horizontal, Theme.trackerRowHPadding)
+                        .padding(.vertical, 12)
+                        .background(Theme.cardSurface)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Group {
@@ -68,6 +91,9 @@ struct BossBreakdownView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showingRecap) {
+            RaceCompleteRecapView(standings: viewModel.finalStandings, summaries: viewModel.summaries)
         }
     }
 }

@@ -26,6 +26,10 @@ holds whatever's landed since the last one.
 - First-visit tips (TipKit) on the Heartbreak tab, Kills tab, and the Close Call Threshold
   slider in Settings, explaining each to newcomers. Shown once per device, never again after
   dismissed.
+- Race Complete: once the world's leading guild clears every boss, everyone gets a distinct
+  "🏆 Race Complete!" push (separate from the final boss's own World First push), a "Final
+  Standings" recap banner on the Bosses tab, and the Live Activity shows a proper "Race
+  Complete — [Guild] wins!" card instead of going stale or blank.
 
 ### Fixed
 - Push notifications could silently stop for hours at a time, recurring roughly daily — caused

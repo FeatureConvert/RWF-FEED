@@ -21,6 +21,11 @@ struct RaceLiveActivityAttributes: ActivityAttributes {
         var bestGuildName: String?
         var bestPercent: Double?
         var pullCount: Int?
+        /// Set once the leader has cleared every boss in the raid — the widget should show a
+        /// distinct "Race Complete" card instead of the normal per-boss layout. Optional (not a
+        /// plain Bool) so a push payload from before this field existed still decodes cleanly.
+        var isRaceComplete: Bool? = nil
+        var winningGuildName: String? = nil
     }
 
     /// ActivityAttributes requires at least one non-updating property alongside ContentState;

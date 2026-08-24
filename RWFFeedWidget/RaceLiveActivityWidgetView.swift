@@ -20,11 +20,47 @@ private func liveActivityPercentText(_ percent: Double?) -> String {
 struct RaceLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RaceLiveActivityAttributes.self) { context in
-            RaceLiveActivityLockScreenView(state: context.state)
-                .activityBackgroundTint(WidgetTheme.background)
-                .activitySystemActionForegroundColor(WidgetTheme.textPrimary)
+            if context.state.isRaceComplete == true {
+                RaceCompleteLockScreenView(state: context.state)
+                    .activityBackgroundTint(WidgetTheme.background)
+                    .activitySystemActionForegroundColor(WidgetTheme.textPrimary)
+            } else {
+                RaceLiveActivityLockScreenView(state: context.state)
+                    .activityBackgroundTint(WidgetTheme.background)
+                    .activitySystemActionForegroundColor(WidgetTheme.textPrimary)
+            }
         } dynamicIsland: { context in
-            DynamicIsland {
+            if context.state.isRaceComplete == true {
+                return DynamicIsland {
+                    DynamicIslandExpandedRegion(.leading) {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(WidgetTheme.accent)
+                    }
+                    DynamicIslandExpandedRegion(.trailing) {
+                        Text("COMPLETE")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(WidgetTheme.textSecondary)
+                    }
+                    DynamicIslandExpandedRegion(.bottom) {
+                        Text("\(context.state.winningGuildName ?? "The race") wins the Race to World First!")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(WidgetTheme.textPrimary)
+                            .lineLimit(2)
+                    }
+                } compactLeading: {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(WidgetTheme.accent)
+                } compactTrailing: {
+                    EmptyView()
+                } minimal: {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(WidgetTheme.accent)
+                }
+            }
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("BOSS \(context.state.bossOrdinal)/\(context.state.totalBosses)")
@@ -135,6 +171,35 @@ private struct RaceLiveActivityLockScreenView: View {
                 .font(.system(size: 30, weight: .bold))
                 .foregroundStyle(WidgetTheme.accent)
                 .monospacedDigit()
+        }
+        .padding(16)
+    }
+}
+
+private struct RaceCompleteLockScreenView: View {
+    let state: RaceLiveActivityAttributes.ContentState
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(WidgetTheme.accent)
+                .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("RACE COMPLETE")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(WidgetTheme.textSecondary)
+                Text("\(state.winningGuildName ?? "Unknown") wins!")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(WidgetTheme.textPrimary)
+                    .lineLimit(1)
+                Text("Race to World First is over")
+                    .font(.system(size: 13))
+                    .foregroundStyle(WidgetTheme.textSecondary)
+            }
+
+            Spacer(minLength: 0)
         }
         .padding(16)
     }

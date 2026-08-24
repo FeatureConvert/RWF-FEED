@@ -12,6 +12,13 @@ final class BossBreakdownViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastUpdated: Date?
+    /// True once the world's leading guild (most confirmed kills — same invariant as everywhere
+    /// else in this app) has defeated every boss in the raid. Drives the "Race Complete" recap
+    /// banner; always world-scoped like the rest of this view model's Hall of Fame data.
+    @Published private(set) var isRaceComplete = false
+    /// World-scoped standings, ranked by confirmed kills — reused for the recap's final
+    /// standings list rather than re-deriving a second ranking.
+    @Published private(set) var finalStandings: [GuildStanding] = []
 
     private let service = RaiderIOService.shared
     private var pollTask: Task<Void, Never>?
@@ -58,6 +65,10 @@ final class BossBreakdownViewModel: ObservableObject {
                 updated.vodURL = vodURL
                 return BossSummary(boss: summary.boss, worldFirst: updated, bestPull: summary.bestPull)
             }
+            let worldStandings = tracker.standings(rankings: rankings, regionSlug: "world")
+            finalStandings = worldStandings
+            isRaceComplete = (worldStandings.first?.bossesDown ?? 0) >= tracker.raid.encounters.count
+                && !tracker.raid.encounters.isEmpty
             lastUpdated = Date()
             errorMessage = nil
         } catch {

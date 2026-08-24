@@ -53,6 +53,7 @@ const MAX_DEVICES = 200;
 // Same shape/reasoning as MAX_DEVICES — /live-activity/register is also unauthenticated.
 const MAX_LIVE_ACTIVITIES = 50;
 const LIVE_ACTIVITY_STATE_KEY = "liveActivityState";
+const RACE_COMPLETE_KEY = "raceCompleteAnnounced";
 
 export default {
   // Two independent cron triggers fire this (see wrangler.toml): "*/15 * * * *" also matches
@@ -246,13 +247,14 @@ async function checkRaiderIOEvents(env) {
   const rankData = await rankResp.json();
   const rankings = rankData.raidRankings || [];
 
-  const [heartbreaks, worldFirsts, liveActivity] = await Promise.all([
+  const [heartbreaks, worldFirsts, liveActivity, raceComplete] = await Promise.all([
     checkHeartbreaks(env, rankings, encounterBySlug, devices),
     checkWorldFirstKills(env, rankings, encounterBySlug, devices),
     checkLiveActivity(env, rankings, encounterBySlug, liveActivityTokens),
+    checkRaceComplete(env, rankings, encounterBySlug, devices),
   ]);
 
-  return { ok: true, watchedDevices: devices.length, heartbreaks, worldFirsts, liveActivity };
+  return { ok: true, watchedDevices: devices.length, heartbreaks, worldFirsts, liveActivity, raceComplete };
 }
 
 /// "Major Heartbreaker" pushes: a guild pulling a boss down to a new-record-low remaining
@@ -375,6 +377,40 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
   return { pushCount };
 }
 
+/// A distinct, one-time push once the world's leading guild (most confirmed kills, same
+/// invariant used everywhere else in this file) has defeated every boss in the raid — separate
+/// from the ordinary per-boss World First push in checkWorldFirstKills above, which already
+/// covers the final boss's own kill but doesn't call out that the *entire race* just ended.
+/// RACE_COMPLETE_KEY guards against re-sending on every subsequent tick once the race is over
+/// (it never resets — a new raid tier needs RAID_SLUG updated anyway, same existing constraint
+/// as the rest of this file).
+async function checkRaceComplete(env, rankings, encounterBySlug, devices) {
+  const totalBosses = Object.keys(encounterBySlug).length;
+  if (totalBosses === 0) return { ok: true, skipped: "no encounters" };
+
+  const leader = rankings.reduce((best, entry) => {
+    return !best || entry.encountersDefeated.length > best.encountersDefeated.length ? entry : best;
+  }, null);
+  if (!leader || leader.encountersDefeated.length < totalBosses) return { ok: true, skipped: "race not complete" };
+
+  const alreadyAnnounced = await getCronState(env, RACE_COMPLETE_KEY);
+  if (alreadyAnnounced) return { ok: true, skipped: "already announced" };
+
+  await setCronState(env, RACE_COMPLETE_KEY, JSON.stringify({ winner: leader.guild.displayName, announcedAt: new Date().toISOString() }));
+
+  let pushCount = 0;
+  for (const device of devices) {
+    const spoilerFree = device.spoilerFreeEnabled === true;
+    const title = spoilerFree ? "Spoiler Alert" : "🏆 Race Complete!";
+    const body = spoilerFree
+      ? "The Race to World First has ended. Open the app when you're ready to see who won."
+      : `${leader.guild.displayName} wins the Race to World First!`;
+    await sendPush(env, device.token, title, body, "race-complete", "bosses");
+    pushCount++;
+  }
+  return { ok: true, raceComplete: true, winner: leader.guild.displayName, pushCount };
+}
+
 /// Keeps every registered race Live Activity in sync with the true global leader's (most
 /// confirmed kills, ignoring nothing regional — see client-side leaderNextBossSummary's own
 /// comment for why) own next undefeated boss and the best live pull on it. Same "leader's
@@ -385,7 +421,10 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
 /// Sends an "end" event (with the old boss's final numbers) the moment the tracked boss
 /// changes — the leader killed it — rather than silently morphing the activity into the next
 /// boss; the user starts a fresh one from Settings for that. Sends an "update" event only when
-/// the content actually changed since last tick, not on every single cron minute.
+/// the content actually changed since last tick, not on every single cron minute. Once the
+/// leader has cleared every boss, sends one final "Race Complete" end event instead (see the
+/// `!nextSlug` branch below) rather than leaving activities frozen until the OS's 8-hour
+/// Live Activity timeout.
 async function checkLiveActivity(env, rankings, encounterBySlug, tokens) {
   if (tokens.length === 0) return { ok: true, skipped: "no registered activities" };
 
@@ -399,7 +438,28 @@ async function checkLiveActivity(env, rankings, encounterBySlug, tokens) {
     (a, b) => encounterBySlug[a].ordinal - encounterBySlug[b].ordinal
   );
   const nextSlug = orderedSlugs.find((slug) => !defeatedByLeader.has(slug));
-  if (!nextSlug) return { ok: true, skipped: "raid cleared" };
+
+  // The leader has cleared every boss — the race is over. Send every currently-registered
+  // activity one final "Race Complete" update via the existing end-and-clean-up path (same one
+  // used for a normal boss transition) rather than leaving them frozen on the second-to-last
+  // boss's state until the OS's own 8-hour Live Activity timeout. A device that registers
+  // *after* this point (a fresh Start tap once the tokens table is empty again) naturally gets
+  // the same finale on its next tick — correct, since the race really is over.
+  if (!nextSlug) {
+    const finalContentState = {
+      bossName: encounterBySlug[orderedSlugs[orderedSlugs.length - 1]]?.name ?? "Race Complete",
+      bossOrdinal: orderedSlugs.length,
+      totalBosses: orderedSlugs.length,
+      bossIconData: null,
+      bestGuildName: null,
+      bestPercent: null,
+      pullCount: null,
+      isRaceComplete: true,
+      winningGuildName: leader.guild.displayName,
+    };
+    await endAllLiveActivities(env, tokens, finalContentState);
+    return { ok: true, raceComplete: true, winner: leader.guild.displayName };
+  }
 
   const boss = encounterBySlug[nextSlug];
   let best = null;

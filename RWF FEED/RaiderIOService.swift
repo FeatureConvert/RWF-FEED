@@ -271,8 +271,18 @@ extension RaidInfo {
             return nil
         }
         let defeatedByLeader = Set(leader.encountersDefeated.map(\.slug))
-        guard let boss = encounters.sorted(by: { $0.ordinal < $1.ordinal }).first(where: { !defeatedByLeader.contains($0.slug) }) else {
-            return nil // leader has cleared every boss in the raid
+        let sortedEncounters = encounters.sorted(by: { $0.ordinal < $1.ordinal })
+        guard let boss = sortedEncounters.first(where: { !defeatedByLeader.contains($0.slug) }) else {
+            // Leader has cleared every boss — the race is over. Match what a Live Activity
+            // already running gets from the server's own final push (see push-service's
+            // checkLiveActivity), so starting one after the fact shows the same finale
+            // immediately instead of a nil here reading as "hasn't started yet."
+            return RaceLiveActivityAttributes.ContentState(
+                bossName: sortedEncounters.last?.name ?? "Race Complete",
+                bossOrdinal: sortedEncounters.count, totalBosses: sortedEncounters.count,
+                bossIconData: nil, bestGuildName: nil, bestPercent: nil, pullCount: nil,
+                isRaceComplete: true, winningGuildName: leader.guild.displayName
+            )
         }
         let best = bossSummaries(rankings: rankings).first { $0.boss.slug == boss.slug }?.bestPull
 
