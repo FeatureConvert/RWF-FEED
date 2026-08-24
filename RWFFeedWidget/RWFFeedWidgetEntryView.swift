@@ -71,37 +71,66 @@ struct MediumBossView: View {
     let boss: WidgetBossState?
 
     var body: some View {
-        HStack(spacing: 12) {
-            BossIcon(data: boss?.iconData, size: 44)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                BossIcon(data: boss?.iconData, size: 40)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8)")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(WidgetTheme.textSecondary)
-                Text(boss?.bossName ?? "—")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(WidgetTheme.textPrimary)
-                    .lineLimit(1)
-                if let guild = boss?.bestGuildName, let pulls = boss?.pullCount {
-                    Text("\(guild) · \(pulls) pulls")
-                        .font(.system(size: 12))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8)")
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(WidgetTheme.textSecondary)
+                    Text(boss?.bossName ?? "—")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(WidgetTheme.textPrimary)
                         .lineLimit(1)
-                } else {
-                    Text("No live pulls yet")
-                        .font(.system(size: 12))
-                        .foregroundStyle(WidgetTheme.textSecondary)
+                    if let guild = boss?.bestGuildName, let pulls = boss?.pullCount {
+                        Text("\(guild) · \(pulls) pulls")
+                            .font(.system(size: 12))
+                            .foregroundStyle(WidgetTheme.textSecondary)
+                            .lineLimit(1)
+                    } else {
+                        Text("No live pulls yet")
+                            .font(.system(size: 12))
+                            .foregroundStyle(WidgetTheme.textSecondary)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if boss?.bestPercent != nil {
+                    Text(percentText(boss?.bestPercent))
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(WidgetTheme.accent)
+                        .monospacedDigit()
                 }
             }
 
-            Spacer(minLength: 0)
-
-            Text(percentText(boss?.bestPercent))
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(WidgetTheme.accent)
-                .monospacedDigit()
+            // Medium has more height than that single row needs — a short standings strip
+            // fills it instead of leaving the row centered in blank space (same reasoning as
+            // the large family's standings list, just condensed to fit medium's width/height).
+            if let topGuilds = boss?.topGuilds, !topGuilds.isEmpty {
+                Divider()
+                    .overlay(WidgetTheme.textSecondary.opacity(0.2))
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(Array(topGuilds.prefix(3).enumerated()), id: \.element.id) { index, standing in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(standing.guildName)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(WidgetTheme.textPrimary)
+                                .lineLimit(1)
+                            Text("\(standing.bossesDown)/\(boss?.totalBosses ?? 8) M")
+                                .font(.system(size: 11))
+                                .foregroundStyle(WidgetTheme.textSecondary)
+                                .monospacedDigit()
+                        }
+                        if index < min(topGuilds.count, 3) - 1 {
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(14)
     }
 }
