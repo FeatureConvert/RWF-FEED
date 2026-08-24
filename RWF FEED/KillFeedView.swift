@@ -23,12 +23,12 @@ struct KillFeedView: View {
                 }
 
                 Group {
-                    if viewModel.events.isEmpty && viewModel.isLoading {
+                    if viewModel.groups.isEmpty && viewModel.isLoading {
                         ProgressView("Loading kill feed…")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if viewModel.events.isEmpty, let message = viewModel.errorMessage {
+                    } else if viewModel.groups.isEmpty, let message = viewModel.errorMessage {
                         ContentUnavailableView(message, systemImage: "wifi.slash")
-                    } else if viewModel.events.isEmpty {
+                    } else if viewModel.groups.isEmpty {
                         List {
                             ContentUnavailableView(
                                 "No Kills Yet",
@@ -42,13 +42,22 @@ struct KillFeedView: View {
                         .scrollContentBackground(.hidden)
                         .refreshable { await viewModel.refresh() }
                     } else {
-                        List(Array(viewModel.events.enumerated()), id: \.element.id) { index, event in
-                            KillFeedRow(event: event, isLast: index == viewModel.events.count - 1)
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        List {
+                            ForEach(viewModel.groups) { group in
+                                Section {
+                                    ForEach(Array(group.kills.enumerated()), id: \.element.id) { index, event in
+                                        KillFeedRow(event: event, isLast: index == group.kills.count - 1)
+                                            .listRowSeparator(.hidden)
+                                            .listRowBackground(Color.clear)
+                                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                                    }
+                                } header: {
+                                    BossGroupHeader(boss: group.boss)
+                                }
+                            }
                         }
                         .listStyle(.plain)
+                        .listSectionSpacing(.compact)
                         .scrollContentBackground(.hidden)
                         .refreshable { await viewModel.refresh() }
                     }
@@ -70,6 +79,34 @@ struct KillFeedView: View {
     }
 }
 
+struct BossGroupHeader: View {
+    let boss: Encounter
+
+    var body: some View {
+        HStack(spacing: 6) {
+            AsyncImage(url: boss.fullIconURL) { phase in
+                if let image = phase.image {
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 18, height: 18)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+
+            Text(boss.name)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .textCase(nil)
+        .padding(.top, 4)
+        .padding(.bottom, 2)
+        .padding(.horizontal, Theme.trackerRowHPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.background)
+    }
+}
+
 struct KillFeedRow: View {
     let event: KillFeedEvent
     let isLast: Bool
@@ -79,31 +116,9 @@ struct KillFeedRow: View {
             HStack(spacing: Theme.trackerRowColumnGap) {
                 GuildAvatar(guild: event.guild)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text(event.guild.displayName)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Theme.textPrimary)
-                        Text("killed")
-                            .font(.system(size: 13))
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    HStack(spacing: 6) {
-                        AsyncImage(url: event.boss.fullIconURL) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } else {
-                                Color.clear
-                            }
-                        }
-                        .frame(width: 16, height: 16)
-                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-
-                        Text(event.boss.name)
-                            .font(.system(size: 13))
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                }
+                Text(event.guild.displayName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
 
                 Spacer()
 
@@ -120,11 +135,13 @@ struct KillFeedRow: View {
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
-            .padding(.vertical, Theme.trackerRowVPadding)
-            .padding(.horizontal, Theme.trackerRowHPadding)
+            .padding(.vertical, 8)
+            .padding(.leading, Theme.trackerRowHPadding + 36)
+            .padding(.trailing, Theme.trackerRowHPadding)
 
             if !isLast {
                 FadingDivider()
+                    .padding(.leading, Theme.trackerRowHPadding + 36)
             }
         }
     }

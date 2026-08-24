@@ -8,7 +8,7 @@ import Combine
 
 @MainActor
 final class KillFeedViewModel: ObservableObject {
-    @Published private(set) var events: [KillFeedEvent] = []
+    @Published private(set) var groups: [BossKillGroup] = []
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastUpdated: Date?
@@ -33,17 +33,17 @@ final class KillFeedViewModel: ObservableObject {
     }
 
     func refresh() async {
-        if events.isEmpty { isLoading = true }
+        if groups.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
             // raid-rankings is the actual data source now (see
-            // WorldFirstTracker.killFeedEvents(rankings:)), not just a best-effort logo
+            // WorldFirstTracker.killFeedGroups(rankings:)), not just a best-effort logo
             // correction — a failure here is a real failed refresh, not silently empty kills.
             async let trackerTask = service.fetchTracker()
             async let rankingsTask = service.fetchRaidRankings()
             let tracker = try await trackerTask
             let rankings = try await rankingsTask
-            events = tracker.killFeedEvents(rankings: rankings)
+            groups = tracker.killFeedGroups(rankings: rankings)
             lastUpdated = Date()
             errorMessage = nil
         } catch {

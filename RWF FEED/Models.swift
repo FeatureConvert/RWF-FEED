@@ -192,6 +192,19 @@ struct KillFeedEvent: Identifiable {
     }
 }
 
+// MARK: - Derived boss-kill group (one section per boss, in the Kills tab)
+
+struct BossKillGroup: Identifiable {
+    let boss: Encounter
+    /// Rank-ascending (World First first), already capped to the top N by the caller.
+    let kills: [KillFeedEvent]
+
+    var id: Int { boss.id }
+    /// The most recent kill among the (already-capped) kills shown — used to order groups so
+    /// whichever boss has the freshest action surfaces first.
+    var mostRecentKillAt: Date { kills.last?.defeatedAt ?? .distantPast }
+}
+
 // MARK: - Official raid rankings (raider.io's own live pull tracking, from the Desktop App)
 
 struct RaidRankingsResponse: Decodable {

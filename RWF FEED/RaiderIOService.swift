@@ -175,18 +175,19 @@ extension WorldFirstTracker {
         return Array(sorted.prefix(limit))
     }
 
-    /// One event per guild-kill, newest first — a global kill feed across every guild, sourced
-    /// from raid-rankings rather than the timeline (see `standings(rankings:)` above for why:
-    /// raid-race's own timeline has been observed missing guilds entirely for extended
-    /// stretches of the race). Each `encountersDefeated` entry already carries its own boss
-    /// slug and kill timestamp directly, so unlike the old timeline-based version, this doesn't
-    /// need to assume progress level N was boss N in encounter order.
+    /// One group per boss with at least one kill, sourced from raid-rankings rather than the
+    /// timeline (see `standings(rankings:)` above for why: raid-race's own timeline has been
+    /// observed missing guilds entirely for extended stretches of the race). Each
+    /// `encountersDefeated` entry already carries its own boss slug and kill timestamp
+    /// directly, so unlike the old flat/timeline-based version, this doesn't need to assume
+    /// progress level N was boss N in encounter order.
     ///
-    /// Capped to each boss's top `maxRank` kills — once a boss has been cleared by dozens of
-    /// guilds, "50th place" entries add noise without being notable to anyone. Ranks are still
-    /// computed against the full kill list before the cutoff, so "5th" here always means
-    /// genuinely 5th, not 5th-among-only-the-kept-events.
-    func killFeedEvents(rankings: [RaidRankingEntry], maxRank: Int = 5) -> [KillFeedEvent] {
+    /// Each group is capped to its boss's top `maxRank` kills — once a boss has been cleared by
+    /// dozens of guilds, "50th place" entries add noise without being notable to anyone. Ranks
+    /// are still computed against the full kill list before the cutoff, so "5th" here always
+    /// means genuinely 5th, not 5th-among-only-the-kept-kills. Groups are ordered by their most
+    /// recent kill, so whichever boss has the freshest action surfaces first.
+    func killFeedGroups(rankings: [RaidRankingEntry], maxRank: Int = 5) -> [BossKillGroup] {
         let encounterBySlug = Dictionary(uniqueKeysWithValues: raid.encounters.map { ($0.slug, $0) })
 
         var killsBySlug: [String: [(guild: RaceGuild, defeatedAt: Date)]] = [:]
@@ -196,15 +197,19 @@ extension WorldFirstTracker {
             }
         }
 
-        var events: [KillFeedEvent] = []
+        var groups: [BossKillGroup] = []
         for (slug, kills) in killsBySlug {
             guard let boss = encounterBySlug[slug] else { continue }
-            for (index, kill) in kills.sorted(by: { $0.defeatedAt < $1.defeatedAt }).enumerated() {
-                guard index < maxRank else { break }
-                events.append(KillFeedEvent(guild: kill.guild, boss: boss, rank: index + 1, defeatedAt: kill.defeatedAt))
-            }
+            let ranked = kills.sorted { $0.defeatedAt < $1.defeatedAt }
+                .prefix(maxRank)
+                .enumerated()
+                .map { index, kill in
+                    KillFeedEvent(guild: kill.guild, boss: boss, rank: index + 1, defeatedAt: kill.defeatedAt)
+                }
+            guard !ranked.isEmpty else { continue }
+            groups.append(BossKillGroup(boss: boss, kills: ranked))
         }
-        return events.sorted { $0.defeatedAt > $1.defeatedAt }
+        return groups.sorted { $0.mostRecentKillAt > $1.mostRecentKillAt }
     }
 
 }
