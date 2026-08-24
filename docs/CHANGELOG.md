@@ -20,6 +20,8 @@ holds whatever's landed since the last one.
   boss kill from 20+ minutes earlier) sometimes wasn't reflected at all, because the tab read
   from a raider.io data source that was observed lagging well behind raider.io's own public
   leaderboard. Now reads from the same live, real-time source the leaderboard itself uses.
+- Kills tab had the same issue as Tracker above (same root cause) — recent kills could be
+  missing entirely. Fixed the same way.
 
 ### Changed
 - Tracker tab's guild list is now capped at the top 25 (was up to 50) — more focused at a
