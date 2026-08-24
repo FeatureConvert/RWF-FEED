@@ -62,7 +62,7 @@ export default {
   // the every-minute trigger.
   async scheduled(event, env, ctx) {
     if (event.cron === "*/15 * * * *") {
-      ctx.waitUntil(checkWowheadNews(env));
+      ctx.waitUntil(Promise.all([checkWowheadNews(env), prunePullVelocitySnapshots(env)]));
       return;
     }
     ctx.waitUntil(Promise.all([checkForNewPosts(env), checkRaiderIOEvents(env)]));
@@ -115,6 +115,14 @@ export default {
       }
       await env.DB.prepare("DELETE FROM live_activity_tokens WHERE push_token = ?").bind(body.pushToken).run();
       return new Response("OK");
+    }
+
+    // Read-only, unauthenticated — same posture as the rest of this app: it's a thin derived
+    // view over raider.io's own public pull data (guild id, boss slug, a past percent/pull
+    // count), not anything sensitive. See getVelocitySnapshots for the response shape.
+    if (request.method === "GET" && url.pathname === "/velocity") {
+      const snapshots = await getVelocitySnapshots(env);
+      return new Response(JSON.stringify(snapshots), { headers: { "content-type": "application/json" } });
     }
 
     if (request.method === "GET" && url.pathname === "/check") {
@@ -253,6 +261,9 @@ async function checkRaiderIOEvents(env) {
     checkLiveActivity(env, rankings, encounterBySlug, liveActivityTokens),
     checkRaceComplete(env, rankings, encounterBySlug, devices),
   ]);
+  // Not part of the Promise.all above deliberately — a slow/failed snapshot write shouldn't be
+  // able to delay or fail the push-notification-critical checks it's racing alongside.
+  await snapshotPullVelocity(env, rankings).catch(() => {});
 
   return { ok: true, watchedDevices: devices.length, heartbreaks, worldFirsts, liveActivity, raceComplete };
 }
@@ -409,6 +420,90 @@ async function checkRaceComplete(env, rankings, encounterBySlug, devices) {
     pushCount++;
   }
   return { ok: true, raceComplete: true, winner: leader.guild.displayName, pushCount };
+}
+
+// How often (at minimum) a fresh snapshot is written per (guild, boss) pair even when the
+// percent hasn't moved — the client needs *some* datapoint reliably older than an hour to show
+// a trend against, not just one whenever progress happens to change. Written far more often
+// than PULL_VELOCITY_LOOKBACK_MINUTES needs, since a pull that's genuinely stalled should still
+// produce a "0% change" datapoint rather than silently having no history.
+const PULL_VELOCITY_MIN_SNAPSHOT_INTERVAL_MINUTES = 10;
+const PULL_VELOCITY_LOOKBACK_MINUTES = 60;
+// Kept well beyond the lookback window (with margin for a delayed prune tick) rather than right
+// at it, so a temporarily-slow prune cycle can never eat into data /velocity is actively using.
+const PULL_VELOCITY_RETENTION_HOURS = 25;
+
+/// One row per (guild, boss) with an active, undefeated pull — written at most once every
+/// PULL_VELOCITY_MIN_SNAPSHOT_INTERVAL_MINUTES per pair, or immediately if the percent actually
+/// changed since the last snapshot for that pair (same "only write on real change" discipline
+/// as the rest of this file, loosened slightly here since "no change in N minutes" is itself
+/// meaningful information for a stalled-pull indicator, not just noise to skip).
+async function snapshotPullVelocity(env, rankings) {
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - PULL_VELOCITY_MIN_SNAPSHOT_INTERVAL_MINUTES * 60 * 1000).toISOString();
+
+  const activePulls = [];
+  for (const entry of rankings) {
+    for (const pull of entry.encountersPulled || []) {
+      if (pull.isDefeated) continue;
+      if (typeof pull.bestPercent !== "number" || typeof pull.numPulls !== "number") continue;
+      activePulls.push({ guildId: entry.guild.id, bossSlug: pull.slug, percent: pull.bestPercent, pulls: pull.numPulls });
+    }
+  }
+  if (activePulls.length === 0) return { ok: true, snapshotted: 0 };
+
+  let snapshotted = 0;
+  for (const pull of activePulls) {
+    const last = await env.DB.prepare(
+      "SELECT best_percent, recorded_at FROM pull_velocity_snapshots WHERE guild_id = ? AND boss_slug = ? ORDER BY recorded_at DESC LIMIT 1"
+    )
+      .bind(pull.guildId, pull.bossSlug)
+      .first();
+    const changed = !last || last.best_percent !== pull.percent;
+    const dueForFreshSnapshot = !last || last.recorded_at < cutoff;
+    if (!changed && !dueForFreshSnapshot) continue;
+
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO pull_velocity_snapshots (guild_id, boss_slug, best_percent, num_pulls, recorded_at) VALUES (?, ?, ?, ?, ?)"
+    )
+      .bind(pull.guildId, pull.bossSlug, pull.percent, pull.pulls, now.toISOString())
+      .run();
+    snapshotted++;
+  }
+  return { ok: true, snapshotted };
+}
+
+async function prunePullVelocitySnapshots(env) {
+  const cutoff = new Date(Date.now() - PULL_VELOCITY_RETENTION_HOURS * 60 * 60 * 1000).toISOString();
+  const result = await env.DB.prepare("DELETE FROM pull_velocity_snapshots WHERE recorded_at < ?").bind(cutoff).run();
+  return { ok: true, pruned: result.meta?.changes ?? 0 };
+}
+
+/// The closest snapshot to PULL_VELOCITY_LOOKBACK_MINUTES ago, per (guild, boss) pair, for every
+/// pair with at least one snapshot that old. The client already has the *current* percent from
+/// its own raid-rankings fetch, so this only needs to return the past datapoint — the delta is
+/// computed client-side, keeping this endpoint a plain read with no derived-data drift risk.
+/// SQLite (which D1 is) guarantees that a bare column alongside a single MAX()/MIN() aggregate,
+/// under the same GROUP BY, comes from the row that produced that aggregate — this is
+/// documented SQLite behavior, not the ambiguous "arbitrary row" semantics other databases have
+/// for the same pattern.
+async function getVelocitySnapshots(env) {
+  const cutoff = new Date(Date.now() - PULL_VELOCITY_LOOKBACK_MINUTES * 60 * 1000).toISOString();
+  const { results } = await env.DB.prepare(
+    `SELECT guild_id, boss_slug, best_percent, num_pulls, MAX(recorded_at) as recorded_at
+     FROM pull_velocity_snapshots
+     WHERE recorded_at <= ?
+     GROUP BY guild_id, boss_slug`
+  )
+    .bind(cutoff)
+    .all();
+  return results.map((r) => ({
+    guildId: r.guild_id,
+    bossSlug: r.boss_slug,
+    percent: r.best_percent,
+    pulls: r.num_pulls,
+    recordedAt: r.recorded_at,
+  }));
 }
 
 /// Keeps every registered race Live Activity in sync with the true global leader's (most
