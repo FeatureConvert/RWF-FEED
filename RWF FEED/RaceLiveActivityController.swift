@@ -18,6 +18,7 @@ final class RaceLiveActivityController: ObservableObject {
     @Published private(set) var isActive: Bool
 
     private var tokenTask: Task<Void, Never>?
+    private var stateTask: Task<Void, Never>?
     private var lastKnownTokenHex: String?
 
     private static let registerURL = URL(string: "https://rwf-feed-push.rwf-feed.workers.dev/live-activity/register")!
@@ -29,6 +30,7 @@ final class RaceLiveActivityController: ObservableObject {
         if let existing = Activity<RaceLiveActivityAttributes>.activities.first {
             isActive = true
             observePushToken(for: existing)
+            observeActivityState(for: existing)
         } else {
             isActive = false
         }
@@ -45,6 +47,7 @@ final class RaceLiveActivityController: ObservableObject {
             )
             isActive = true
             observePushToken(for: activity)
+            observeActivityState(for: activity)
         } catch {
             NSLog("RaceLiveActivityController: failed to start Live Activity: %@", String(describing: error))
         }
@@ -53,6 +56,8 @@ final class RaceLiveActivityController: ObservableObject {
     func stop() {
         tokenTask?.cancel()
         tokenTask = nil
+        stateTask?.cancel()
+        stateTask = nil
         isActive = false
         Task {
             for activity in Activity<RaceLiveActivityAttributes>.activities {
@@ -71,6 +76,26 @@ final class RaceLiveActivityController: ObservableObject {
                 let tokenHex = tokenData.map { String(format: "%02x", $0) }.joined()
                 self?.lastKnownTokenHex = tokenHex
                 await Self.send(to: Self.registerURL, tokenHex: tokenHex)
+            }
+        }
+    }
+
+    /// Keeps `isActive` (and Settings' Start/Stop button) honest when the activity ends for a
+    /// reason we didn't initiate ourselves — swiped away from the Lock Screen, the system's
+    /// 8-hour timeout, etc. — not just when our own `stop()` is called.
+    private func observeActivityState(for activity: Activity<RaceLiveActivityAttributes>) {
+        stateTask?.cancel()
+        stateTask = Task { [weak self] in
+            for await state in activity.activityStateUpdates {
+                guard state == .dismissed || state == .ended else { continue }
+                guard let self else { return }
+                self.isActive = false
+                self.tokenTask?.cancel()
+                self.tokenTask = nil
+                if let tokenHex = self.lastKnownTokenHex {
+                    await Self.send(to: Self.unregisterURL, tokenHex: tokenHex)
+                }
+                return
             }
         }
     }

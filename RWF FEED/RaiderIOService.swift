@@ -266,7 +266,7 @@ extension RaidInfo {
     /// implementation). Deliberately always world-scoped, ignoring the app's region filter —
     /// same reasoning as WorldFirstBadge/push notifications: a Live Activity called "the race"
     /// should track the true global leader, not a region-filtered one.
-    func leaderNextBossSummary(rankings: [RaidRankingEntry]) -> RaceLiveActivityAttributes.ContentState? {
+    func leaderNextBossSummary(rankings: [RaidRankingEntry]) async -> RaceLiveActivityAttributes.ContentState? {
         guard let leader = rankings.max(by: { $0.encountersDefeated.count < $1.encountersDefeated.count }) else {
             return nil
         }
@@ -276,8 +276,14 @@ extension RaidInfo {
         }
         let best = bossSummaries(rankings: rankings).first { $0.boss.slug == boss.slug }?.bestPull
 
+        var iconData: Data?
+        if let url = boss.mediumIconURL {
+            iconData = try? await URLSession.shared.data(from: url).0
+        }
+
         return RaceLiveActivityAttributes.ContentState(
             bossName: boss.name, bossOrdinal: boss.ordinal + 1, totalBosses: encounters.count,
+            bossIconData: iconData,
             bestGuildName: best?.guild.displayName, bestPercent: best?.percent, pullCount: best?.pullCount
         )
     }

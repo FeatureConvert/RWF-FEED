@@ -411,17 +411,27 @@ async function checkLiveActivity(env, rankings, encounterBySlug, tokens) {
     }
   }
 
+  const previousRaw = await getCronState(env, LIVE_ACTIVITY_STATE_KEY);
+  const previous = previousRaw ? JSON.parse(previousRaw) : null;
+
+  // The icon only ever changes when the boss itself does — reuse the last fetch instead of
+  // re-downloading the same ~1KB image on every cron tick. Sent as raw base64 bytes rather than
+  // a URL because the widget extension can't reliably load images over the network on its own
+  // (same reason the Home Screen widget pre-fetches icon bytes — see WidgetData.swift).
+  const bossIconData =
+    previous && previous.bossSlug === nextSlug && previous.contentState.bossIconData
+      ? previous.contentState.bossIconData
+      : await fetchBossIconBase64(boss.iconUrl);
+
   const contentState = {
     bossName: boss.name,
     bossOrdinal: boss.ordinal + 1,
     totalBosses: Object.keys(encounterBySlug).length,
+    bossIconData,
     bestGuildName: best?.guild ?? null,
     bestPercent: best?.percent ?? null,
     pullCount: best?.pullCount ?? null,
   };
-
-  const previousRaw = await getCronState(env, LIVE_ACTIVITY_STATE_KEY);
-  const previous = previousRaw ? JSON.parse(previousRaw) : null;
 
   if (previous && previous.bossSlug !== nextSlug) {
     await endAllLiveActivities(env, tokens, previous.contentState);
@@ -438,6 +448,28 @@ async function checkLiveActivity(env, rankings, encounterBySlug, tokens) {
     await sendLiveActivityPush(env, token, "update", contentState);
   }
   return { ok: true, updated: nextSlug };
+}
+
+// The "medium" CDN icon variant (36x36, ~1.7KB) rather than the "large" one the app itself uses
+// (56x56, ~2.7KB) — APNs caps a Live Activity push payload around 4KB total, and this field has
+// to share that budget with the rest of contentState. ("small" at 18x18 fits with room to
+// spare but renders visibly blurry once scaled back up in the Lock Screen UI.)
+async function fetchBossIconBase64(iconUrlPath) {
+  if (!iconUrlPath) return null;
+  const mediumPath = iconUrlPath.replace("/icons/large/", "/icons/medium/");
+  try {
+    const resp = await fetch(`https://cdn.raiderio.net${mediumPath}`);
+    if (!resp.ok) return null;
+    const bytes = new Uint8Array(await resp.arrayBuffer());
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  } catch (e) {
+    return null;
+  }
 }
 
 async function getLiveActivityTokens(env) {

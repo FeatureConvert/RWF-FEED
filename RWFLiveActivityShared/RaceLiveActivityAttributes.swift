@@ -14,6 +14,10 @@ struct RaceLiveActivityAttributes: ActivityAttributes {
         var bossName: String
         var bossOrdinal: Int
         var totalBosses: Int
+        /// Raw image bytes, not a URL — the widget extension can't reliably load a network image
+        /// on its own (same reason the Home Screen widget pre-fetches icon bytes; see
+        /// WidgetData.swift), and Data round-trips through push as base64 automatically.
+        var bossIconData: Data?
         var bestGuildName: String?
         var bestPercent: Double?
         var pullCount: Int?

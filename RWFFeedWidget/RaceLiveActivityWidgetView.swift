@@ -10,6 +10,7 @@
 import ActivityKit
 import WidgetKit
 import SwiftUI
+import UIKit
 
 private func liveActivityPercentText(_ percent: Double?) -> String {
     guard let percent else { return "—" }
@@ -53,19 +54,36 @@ struct RaceLiveActivityWidget: Widget {
                     }
                 }
             } compactLeading: {
-                Text("\(context.state.bossOrdinal)")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(WidgetTheme.accent)
+                HStack(spacing: 3) {
+                    Image(systemName: "flag.checkered")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("\(context.state.bossOrdinal)")
+                        .font(.system(size: 13, weight: .bold))
+                        .monospacedDigit()
+                }
+                .foregroundStyle(WidgetTheme.accent)
             } compactTrailing: {
-                Text(liveActivityPercentText(context.state.bestPercent))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(WidgetTheme.textPrimary)
-                    .monospacedDigit()
+                if let percent = context.state.bestPercent {
+                    Text(String(format: "%.1f%%", percent))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(WidgetTheme.textPrimary)
+                        .monospacedDigit()
+                } else {
+                    Text("LIVE")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(WidgetTheme.textSecondary)
+                }
             } minimal: {
-                Text(liveActivityPercentText(context.state.bestPercent))
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(WidgetTheme.accent)
-                    .monospacedDigit()
+                if let percent = context.state.bestPercent {
+                    Text(String(format: "%.0f%%", percent))
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(WidgetTheme.accent)
+                        .monospacedDigit()
+                } else {
+                    Image(systemName: "flag.checkered")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(WidgetTheme.accent)
+                }
             }
         }
     }
@@ -76,6 +94,21 @@ private struct RaceLiveActivityLockScreenView: View {
 
     var body: some View {
         HStack(spacing: 14) {
+            Group {
+                if let data = state.bossIconData, let uiImage = UIImage(data: data) {
+                    // The source icon (36x36, kept small to fit inside APNs' push payload cap)
+                    // is well below the Lock Screen's rendered size — nearest-neighbor scaling
+                    // reads as a crisp pixel-art icon instead of the smeary blur bilinear
+                    // upscaling produces at this ratio.
+                    Image(uiImage: uiImage).resizable().interpolation(.none).aspectRatio(contentMode: .fill)
+                } else {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(WidgetTheme.accent.opacity(0.25))
+                }
+            }
+            .frame(width: 44, height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
             VStack(alignment: .leading, spacing: 3) {
                 Text("BOSS \(state.bossOrdinal)/\(state.totalBosses)")
                     .font(.system(size: 10, weight: .bold))

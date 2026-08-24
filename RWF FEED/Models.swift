@@ -154,6 +154,13 @@ struct Encounter: Decodable, Identifiable {
 
     /// `iconUrl` comes back as a host-relative path (e.g. "/images/wow/icons/large/...jpg").
     var fullIconURL: URL? { URL(string: "https://cdn.raiderio.net\(iconUrl)") }
+
+    /// A smaller CDN variant of the same icon (36x36, ~1.7KB vs. the 56x56 ~2.7KB default) —
+    /// used for the Live Activity, whose content state has to fit inside APNs' ~4KB push
+    /// payload cap.
+    var mediumIconURL: URL? {
+        URL(string: "https://cdn.raiderio.net\(iconUrl.replacingOccurrences(of: "/icons/large/", with: "/icons/medium/"))")
+    }
 }
 
 // MARK: - Derived guild standing (one row per guild in the tracker)

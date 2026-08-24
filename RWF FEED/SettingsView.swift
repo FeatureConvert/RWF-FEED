@@ -269,7 +269,7 @@ struct SettingsView: View {
                 async let trackerTask = RaiderIOService.shared.fetchTracker(region: "world")
                 async let rankingsTask = RaiderIOService.shared.fetchRaidRankings(region: "world")
                 let (tracker, rankings) = try await (trackerTask, rankingsTask)
-                guard let content = tracker.raid.leaderNextBossSummary(rankings: rankings) else {
+                guard let content = await tracker.raid.leaderNextBossSummary(rankings: rankings) else {
                     liveActivityErrorMessage = "The race hasn't started yet — check back once guilds are pulling."
                     return
                 }
