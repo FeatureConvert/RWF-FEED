@@ -172,7 +172,7 @@ async function checkForNewPosts(env) {
       const body = normalizeWhitespace(post.contentPreview) || "New update";
       const spoilerFreeBody = "New coverage update — open the app when you're ready to see it.";
       for (const device of devices) {
-        await sendPush(env, device.token, title, device.spoilerFreeEnabled ? spoilerFreeBody : body, `post-${post.id}`);
+        await sendPush(env, device.token, title, device.spoilerFreeEnabled ? spoilerFreeBody : body, `post-${post.id}`, "feed");
       }
     }
     // Only write when maxId actually advanced — this cron runs every minute, and writing
@@ -275,7 +275,8 @@ async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
           device.token,
           "Major Heartbreaker",
           `${entry.guild.displayName} wipes on ${bossName} at ${pull.bestPercent.toFixed(2)}%`,
-          `heartbreak-${key}-${Math.round(pull.bestPercent * 100)}`
+          `heartbreak-${key}-${Math.round(pull.bestPercent * 100)}`,
+          "heartbreak"
         );
         pushCount++;
       }
@@ -325,7 +326,7 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
       const body = spoilerFree
         ? "A boss has fallen for the first time. Open the app when you're ready to see who."
         : `${claim.guildName} claims World First on ${bossName}!`;
-      await sendPush(env, device.token, title, body, `worldfirst-${slug}`);
+      await sendPush(env, device.token, title, body, `worldfirst-${slug}`, "kills");
       pushCount++;
     }
   }
@@ -378,7 +379,7 @@ async function checkWowheadNews(env) {
     for (const article of newArticles) {
       const collapseId = `wowhead-${article.guid.replace(/[^a-zA-Z0-9]/g, "").slice(-40)}`;
       for (const device of devices) {
-        await sendPush(env, device.token, "WoW News", article.title, collapseId);
+        await sendPush(env, device.token, "WoW News", article.title, collapseId, "news");
       }
     }
     // Same reasoning as LAST_SEEN_KEY above — only write when the newest pubDate advanced.
@@ -437,7 +438,7 @@ async function getApnsJwt(env) {
 // lastSeenPostId/heartbreakBest state write that follows it and causing every "new" item to be
 // re-sent to every device on the next cron tick. Callers get an {status, error} result for
 // both failure modes instead, same as they already did for non-2xx.
-async function sendPush(env, deviceToken, title, body, collapseId) {
+async function sendPush(env, deviceToken, title, body, collapseId, tab) {
   let res;
   try {
     const jwt = await getApnsJwt(env);
@@ -461,7 +462,11 @@ async function sendPush(env, deviceToken, title, body, collapseId) {
       // clears it back to 0 on foreground (see AppDelegate), so in practice it reads as "there's
       // something new" rather than a true count, which is the best we can do without adding
       // read-state tracking.
-      body: JSON.stringify({ aps: { alert: { title, body }, sound: "default", badge: 1 } }),
+      // "tab" is a top-level custom field (outside aps, which APNs/iOS don't interpret) — the
+      // app reads it on notification tap to open directly to the relevant tab instead of
+      // whatever Default Tab happens to be set. See AppDelegate's didReceive response: and
+      // AppTab's raw values, which this must match.
+      body: JSON.stringify({ aps: { alert: { title, body }, sound: "default", badge: 1 }, tab }),
     });
   } catch (error) {
     console.log("APNs request failed", deviceToken, error);

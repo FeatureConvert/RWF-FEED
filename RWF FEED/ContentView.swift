@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab: AppTab
+    @ObservedObject private var notificationRouter = NotificationRouter.shared
     /// Each tab's view (and its @StateObject view model / polling task) is created the first
     /// time it's selected, then kept alive and just visually swapped after that — matching how
     /// a real TabView behaves, rather than eagerly starting all 6 tabs' polling at launch.
@@ -40,6 +41,11 @@ struct ContentView: View {
         .background(Theme.background)
         .onChange(of: selectedTab) { _, newValue in
             visitedTabs.insert(newValue)
+        }
+        .onChange(of: notificationRouter.pendingTab) { _, tab in
+            guard let tab else { return }
+            selectedTab = tab
+            notificationRouter.pendingTab = nil
         }
     }
 

@@ -56,4 +56,25 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         completionHandler([.banner, .sound, .list])
     }
+
+    // Tapping a notification only opens the app to whatever Default Tab is set, not wherever
+    // that notification is actually about — a "Major Heartbreaker" push should land on
+    // Heartbreak, not wherever the user happened to leave the app. The push payload carries a
+    // top-level "tab" string (see push-service/src/worker.js's sendPush) matching AppTab's raw
+    // values; NotificationRouter bridges it from this UIKit callback into SwiftUI.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // UNUserNotificationCenterDelegate callbacks aren't guaranteed to land on the main
+        // actor, but NotificationRouter is — hop over explicitly rather than assuming.
+        let userInfo = response.notification.request.content.userInfo
+        Task { @MainActor in
+            if let tabRaw = userInfo["tab"] as? String, let tab = AppTab(rawValue: tabRaw) {
+                NotificationRouter.shared.pendingTab = tab
+            }
+        }
+        completionHandler()
+    }
 }

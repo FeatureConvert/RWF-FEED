@@ -10,6 +10,7 @@ import SwiftUI
 
 struct HeartbreakView: View {
     @StateObject private var viewModel = HeartbreakViewModel()
+    @ObservedObject private var notificationPreferences = NotificationPreferences.shared
     @State private var showingSettings = false
     /// See FeedView's isActive doc comment — ContentView keeps every visited tab mounted, so
     /// polling has to be paused/resumed off this instead of .onDisappear (which never fires).
@@ -33,7 +34,7 @@ struct HeartbreakView: View {
                             ContentUnavailableView(
                                 "No Close Calls Right Now",
                                 systemImage: "heart.slash",
-                                description: Text("Nobody's under 10% on a boss they haven't killed yet.")
+                                description: Text("Nobody's under \(String(format: "%.1f", notificationPreferences.heartbreakThresholdPercent))% on a boss they haven't killed yet.")
                             )
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)

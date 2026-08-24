@@ -39,7 +39,10 @@ final class HeartbreakViewModel: ObservableObject {
             async let trackerTask = service.fetchTracker()
             async let rankingsTask = service.fetchRaidRankings()
             let (tracker, rankings) = try await (trackerTask, rankingsTask)
-            closeCalls = tracker.raid.closeCalls(rankings: rankings)
+            // Was hardcoded to the service's own 10% default, independent of the Settings
+            // slider — which only ever controlled the push notification trigger, not what this
+            // tab itself displayed, so tightening/loosening the slider visibly did nothing here.
+            closeCalls = tracker.raid.closeCalls(rankings: rankings, maxPercent: NotificationPreferences.shared.heartbreakThresholdPercent)
             lastUpdated = Date()
             errorMessage = nil
         } catch {

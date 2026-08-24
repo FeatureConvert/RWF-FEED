@@ -113,7 +113,7 @@ struct SettingsView: View {
                     Text("Close Calls")
                         .foregroundStyle(Theme.textSecondary)
                 } footer: {
-                    Text("Major Heartbreaker pushes when a guild's best pull drops under this remaining health%, on a new record low. By default that only covers bosses still part of the World First race — turn the toggle on to also get pushed for a guild's close call on a boss another guild has already killed.")
+                    Text("Also controls the Heartbreak tab's cutoff, not just push. Major Heartbreaker pushes when a guild's best pull drops under this remaining health%, on a new record low. By default that only covers bosses still part of the World First race — turn the toggle on to also get pushed for a guild's close call on a boss another guild has already killed.")
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .listRowBackground(Theme.cardSurface)
