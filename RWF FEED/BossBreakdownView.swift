@@ -167,7 +167,7 @@ struct BossSummaryRow: View {
                                     .foregroundStyle(Theme.textSecondary)
                             }
                         } else if let bestPull = summary.bestPull {
-                            Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) — \(bestPull.guild.displayName) (\(bestPull.pullCount) pulls)")
+                            Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) — \(bestPull.guild.displayName) (\(bestPull.pullCount) \(bestPull.pullCount == 1 ? "pull" : "pulls"))")
                                 .font(.system(size: 12))
                                 .foregroundStyle(Theme.textSecondary)
                             if let trend {

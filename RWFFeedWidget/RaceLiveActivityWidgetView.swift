@@ -87,7 +87,7 @@ struct RaceLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     if let guild = context.state.bestGuildName, let pulls = context.state.pullCount {
-                        Text("\(guild) · \(pulls) pulls")
+                        Text("\(guild) · \(pulls) \(pulls == 1 ? "pull" : "pulls")")
                             .font(.system(size: 12))
                             .foregroundStyle(WidgetTheme.textSecondary)
                     } else {
@@ -165,7 +165,7 @@ private struct RaceLiveActivityLockScreenView: View {
                     .foregroundStyle(WidgetTheme.textPrimary)
                     .lineLimit(1)
                 if let guild = state.bestGuildName, let pulls = state.pullCount {
-                    Text("\(guild) · \(pulls) pulls")
+                    Text("\(guild) · \(pulls) \(pulls == 1 ? "pull" : "pulls")")
                         .font(.system(size: 13))
                         .foregroundStyle(WidgetTheme.textSecondary)
                         .lineLimit(1)
