@@ -15,22 +15,14 @@ final class NewsViewModel: ObservableObject {
 
     private static let feedURL = URL(string: "https://www.wowhead.com/news/rss/retail")!
 
-    private var pollTask: Task<Void, Never>?
+    private let poller = Poller()
 
     func startPolling(interval: TimeInterval = 300) {
-        stopPolling()
-        pollTask = Task { [weak self] in
-            guard let self else { return }
-            while !Task.isCancelled {
-                await self.refresh()
-                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-            }
-        }
+        poller.start(interval: interval) { [weak self] in await self?.refresh() }
     }
 
     func stopPolling() {
-        pollTask?.cancel()
-        pollTask = nil
+        poller.stop()
     }
 
     func refresh() async {
