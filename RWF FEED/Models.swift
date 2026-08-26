@@ -170,10 +170,20 @@ struct Encounter: Decodable, Identifiable {
 // MARK: - Derived guild standing (one row per guild in the tracker)
 
 struct GuildStanding: Identifiable {
+    /// A guild's live pull data on whichever boss comes right after their current progress —
+    /// nil once they've killed every boss, or while raid-rankings has no pull recorded yet for
+    /// the boss they just unlocked.
+    struct CurrentPull {
+        let boss: Encounter
+        let percent: Double
+        let pullCount: Int
+    }
+
     let guild: RaceGuild
     let bossesDown: Int
     let lastKillAt: Date?
     let isLive: Bool
+    let currentPull: CurrentPull?
 
     var id: Int { guild.id }
 }

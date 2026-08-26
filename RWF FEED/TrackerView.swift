@@ -119,12 +119,58 @@ struct GuildStandingRow: View {
                     }
                 }
             }
-            .padding(.vertical, Theme.trackerRowVPadding)
             .padding(.horizontal, Theme.trackerRowHPadding)
+            .padding(.top, Theme.trackerRowVPadding)
+            .padding(.bottom, rank <= 5 && standing.currentPull != nil ? 0 : Theme.trackerRowVPadding)
+
+            if rank <= 5, let pull = standing.currentPull {
+                CurrentPullRow(pull: pull)
+                    .padding(.leading, Theme.trackerRowHPadding + Theme.guildLogoDiameter + Theme.trackerRowColumnGap)
+                    .padding(.trailing, Theme.trackerRowHPadding)
+                    .padding(.top, 4)
+                    .padding(.bottom, Theme.trackerRowVPadding)
+            }
 
             if !isLast {
                 FadingDivider()
             }
+        }
+    }
+}
+
+/// Shown only on the top 5 guilds' rows — the boss they're currently pulling and their best
+/// live progress on it, from raid-rankings. Absent (row omits this entirely) once a guild's
+/// killed every boss, or before raid-rankings has recorded a pull on their next one yet.
+private struct CurrentPullRow: View {
+    let pull: GuildStanding.CurrentPull
+
+    var body: some View {
+        HStack(spacing: 6) {
+            AsyncImage(url: pull.boss.fullIconURL) { phase in
+                if let image = phase.image {
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 14, height: 14)
+            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+
+            Text("On \(pull.boss.name)")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            Text(String(format: "%.2f%%", pull.percent))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.accentText)
+                .monospacedDigit()
+
+            Text("· \(pull.pullCount) pulls")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textSecondary)
         }
     }
 }

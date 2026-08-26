@@ -47,11 +47,15 @@ final class TrackerViewModel: ObservableObject {
             let rankings = await rankingsTask
             raid = tracker.raid
             let logoByGuildId = Dictionary(rankings.map { ($0.guild.id, $0.guild.logo) }, uniquingKeysWith: { first, _ in first })
-            standings = tracker.standings().map { standing in
-                guard let logo = logoByGuildId[standing.guild.id] else { return standing }
+            let baseStandings = tracker.standings()
+            let bossesDownByGuildId = Dictionary(uniqueKeysWithValues: baseStandings.map { ($0.guild.id, $0.bossesDown) })
+            let currentPullByGuildId = tracker.raid.currentPulls(bossesDownByGuildId: bossesDownByGuildId, rankings: rankings)
+            standings = baseStandings.map { standing in
+                let guild = logoByGuildId[standing.guild.id].map { standing.guild.withLogo($0) } ?? standing.guild
                 return GuildStanding(
-                    guild: standing.guild.withLogo(logo), bossesDown: standing.bossesDown,
-                    lastKillAt: standing.lastKillAt, isLive: standing.isLive
+                    guild: guild, bossesDown: standing.bossesDown,
+                    lastKillAt: standing.lastKillAt, isLive: standing.isLive,
+                    currentPull: currentPullByGuildId[standing.guild.id]
                 )
             }
             lastUpdated = Date()

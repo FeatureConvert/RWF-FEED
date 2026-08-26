@@ -141,7 +141,7 @@ extension WorldFirstTracker {
         guard !steps.isEmpty else { return [] }
 
         return bestProgressPerGuild(steps).values
-            .map { GuildStanding(guild: $0.guild, bossesDown: $0.progress, lastKillAt: $0.killedAt, isLive: $0.isLive) }
+            .map { GuildStanding(guild: $0.guild, bossesDown: $0.progress, lastKillAt: $0.killedAt, isLive: $0.isLive, currentPull: nil) }
             .sorted { lhs, rhs in
                 if lhs.bossesDown != rhs.bossesDown { return lhs.bossesDown > rhs.bossesDown }
                 switch (lhs.lastKillAt, rhs.lastKillAt) {
@@ -214,6 +214,23 @@ extension RaidInfo {
         return encounters
             .sorted { $0.ordinal < $1.ordinal }
             .map { boss in BossSummary(boss: boss, worldFirst: worldFirstBySlug[boss.slug], bestPull: bestPullBySlug[boss.slug]) }
+    }
+
+    /// For each guild, their live pull data (best %, pull count) on whichever boss comes right
+    /// after `bossesDownByGuildId`'s progress for them — keyed by guild id, and absent for a
+    /// guild that's killed every boss already or hasn't logged a pull on their next boss yet.
+    func currentPulls(bossesDownByGuildId: [Int: Int], rankings: [RaidRankingEntry]) -> [Int: GuildStanding.CurrentPull] {
+        let orderedEncounters = encounters.sorted { $0.ordinal < $1.ordinal }
+
+        var result: [Int: GuildStanding.CurrentPull] = [:]
+        for entry in rankings {
+            guard let bossesDown = bossesDownByGuildId[entry.guild.id], bossesDown < orderedEncounters.count else { continue }
+            let nextBoss = orderedEncounters[bossesDown]
+            guard let pull = entry.encountersPulled.first(where: { $0.slug == nextBoss.slug && !$0.isDefeated }),
+                  let percent = pull.bestPercent, let pullCount = pull.numPulls else { continue }
+            result[entry.guild.id] = GuildStanding.CurrentPull(boss: nextBoss, percent: percent, pullCount: pullCount)
+        }
+        return result
     }
 
     /// Every guild's best pull on a boss they personally haven't killed yet, across the whole
