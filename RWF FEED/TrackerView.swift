@@ -126,7 +126,7 @@ struct GuildStandingRow: View {
         parts.append("\(standing.bossesDown) of \(totalBosses) bosses down")
         if let currentBoss = standing.currentBoss {
             if let percent = standing.currentPullPercent, let pulls = standing.currentPullCount {
-                parts.append("working on \(currentBoss.name), \(String(format: "%.2f%%", percent)), \(pulls) \(pulls == 1 ? "pull" : "pulls")")
+                parts.append("working on \(currentBoss.name), \(String(format: "%.2f%%", percent)) remaining, \(pulls) \(pulls == 1 ? "pull" : "pulls")")
             } else {
                 parts.append("working on \(currentBoss.name)")
             }
@@ -160,7 +160,7 @@ struct GuildStandingRow: View {
                             .foregroundStyle(Theme.textSecondary)
                         if let currentBoss = standing.currentBoss {
                             if let percent = standing.currentPullPercent, let pulls = standing.currentPullCount {
-                                Text("\(currentBoss.name) — \(String(format: "%.2f%%", percent)) (\(pulls) \(pulls == 1 ? "pull" : "pulls"))")
+                                Text("\(currentBoss.name) — \(String(format: "%.2f%%", percent)) remaining (\(pulls) \(pulls == 1 ? "pull" : "pulls"))")
                                     .font(.system(size: 11))
                                     .foregroundStyle(Theme.textSecondary)
                             } else {

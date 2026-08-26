@@ -122,7 +122,7 @@ struct BossSummaryRow: View {
             parts.append("World First by \(worldFirst.guild.displayName)")
             parts.append(RelativeTime.short(from: worldFirst.at))
         } else if let bestPull = summary.bestPull {
-            parts.append("Best pull \(String(format: "%.2f%%", bestPull.percent)) by \(bestPull.guild.displayName), \(bestPull.pullCount) pulls")
+            parts.append("Best pull \(String(format: "%.2f%%", bestPull.percent)) remaining by \(bestPull.guild.displayName), \(bestPull.pullCount) \(bestPull.pullCount == 1 ? "pull" : "pulls")")
             if let trend {
                 parts.append(trend.isStalled ? "holding steady" : String(format: "%+.1f%% in the last hour", trend.percentChange))
             }
@@ -167,7 +167,7 @@ struct BossSummaryRow: View {
                                     .foregroundStyle(Theme.textSecondary)
                             }
                         } else if let bestPull = summary.bestPull {
-                            Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) — \(bestPull.guild.displayName) (\(bestPull.pullCount) \(bestPull.pullCount == 1 ? "pull" : "pulls"))")
+                            Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) remaining — \(bestPull.guild.displayName) (\(bestPull.pullCount) \(bestPull.pullCount == 1 ? "pull" : "pulls"))")
                                 .font(.system(size: 12))
                                 .foregroundStyle(Theme.textSecondary)
                             if let trend {
