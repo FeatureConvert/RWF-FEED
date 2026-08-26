@@ -45,6 +45,11 @@ const RAID_SLUG = "the-venomous-abyss";
 // to actually reach before it will ever fire (see checkRaceComplete). A new raid tier needs
 // this updated alongside RAID_SLUG.
 const RAID_BOSS_COUNT = 8;
+// How long checkRaceComplete's RACE_COMPLETE_KEY claim is honored before a still-"claimed"
+// (never completed) state is treated as abandoned and reclaimed — see checkRaceComplete. Cron
+// ticks are 1 minute apart; this is generous relative to how long one tick's device-push loop
+// can plausibly take, so a genuinely still-running invocation is never mistaken for a dead one.
+const STALE_CLAIM_MS = 5 * 60 * 1000;
 const LAST_SEEN_KEY = "lastSeenPostId";
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
 // Matches NotificationPreferences.defaultHeartbreakThresholdPercent on the client — kept as a
@@ -423,17 +428,38 @@ async function checkRaceComplete(env, rankings, encounterBySlug, devices) {
   }, null);
   if (!leader || leader.encountersDefeated.length < totalBosses) return { ok: true, skipped: "race not complete" };
 
-  const alreadyAnnounced = await getCronState(env, RACE_COMPLETE_KEY);
-  if (alreadyAnnounced) return { ok: true, skipped: "already announced" };
+  // Two-phase claim rather than a plain read-then-later-write: a bare read here (the previous
+  // version of this check) has a real TOCTOU gap — a scheduled cron tick and a manually
+  // triggered /check could both read "not yet announced" before either writes back, and both
+  // send the push. apns-collapse-id doesn't fully cover this (see the comment on
+  // LAST_SEEN_KEY's own version of this race, near checkForNewPosts): it only replaces a
+  // still-undelivered notification, so a user who already dismissed the first copy sees a
+  // second one. `claimed` first, atomically, via D1's own uniqueness constraint on `key` —
+  // only one concurrent caller can ever get `meta.changes > 0` back — closes that gap
+  // completely, without reintroducing the *other* failure mode this function used to have
+  // (writing the flag before sending, which stranded every device after a mid-loop Worker
+  // interruption with no retry — see STALE_CLAIM_MS below for how this version still recovers
+  // from that).
+  const claim = await env.DB.prepare(
+    "INSERT INTO cron_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING"
+  )
+    .bind(RACE_COMPLETE_KEY, JSON.stringify({ status: "claimed", claimedAt: Date.now() }))
+    .run();
 
-  // Written only after every send is attempted (matching checkHeartbreaks/checkWorldFirstKills
-  // above) rather than before the loop — this flag never resets, so writing it first meant a
-  // Worker interruption (CPU/wall-time limit, isolate eviction) partway through the loop left
-  // every device after that point permanently unable to receive this push: the next tick would
-  // see the flag already set and skip re-sending. Writing after means an interrupted tick just
-  // retries the whole loop next time (some devices getting a harmless duplicate is a much
-  // smaller cost than others never getting the push at all for one of the app's only two
-  // one-time, unrecoverable notifications — see checkLiveActivity's finale for the other).
+  if (claim.meta.changes === 0) {
+    const existing = JSON.parse(await getCronState(env, RACE_COMPLETE_KEY));
+    if (existing.status === "completed") return { ok: true, skipped: "already announced" };
+    // status is "claimed" by someone — either a concurrent invocation genuinely still in
+    // flight (let it finish; this tick just backs off) or a past invocation that crashed
+    // mid-send and never got to write "completed" (self-heal by reclaiming, since nothing else
+    // ever will). STALE_CLAIM_MS is generous relative to how long a single tick's device loop
+    // can plausibly take, so a live invocation is never mistaken for a stale one.
+    if (Date.now() - (existing.claimedAt ?? 0) < STALE_CLAIM_MS) {
+      return { ok: true, skipped: "claim in progress" };
+    }
+    await setCronState(env, RACE_COMPLETE_KEY, JSON.stringify({ status: "claimed", claimedAt: Date.now() }));
+  }
+
   let pushCount = 0;
   for (const device of devices) {
     const spoilerFree = device.spoilerFreeEnabled === true;
@@ -444,7 +470,9 @@ async function checkRaceComplete(env, rankings, encounterBySlug, devices) {
     await sendPush(env, device.token, title, body, "race-complete", "bosses");
     pushCount++;
   }
-  await setCronState(env, RACE_COMPLETE_KEY, JSON.stringify({ winner: leader.guild.displayName, announcedAt: new Date().toISOString() }));
+  await setCronState(env, RACE_COMPLETE_KEY, JSON.stringify({
+    status: "completed", winner: leader.guild.displayName, announcedAt: new Date().toISOString(),
+  }));
   return { ok: true, raceComplete: true, winner: leader.guild.displayName, pushCount };
 }
 
