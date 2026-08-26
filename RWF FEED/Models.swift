@@ -174,6 +174,14 @@ struct GuildStanding: Identifiable {
     let bossesDown: Int
     let lastKillAt: Date?
     let isLive: Bool
+    /// The boss immediately after their last confirmed kill — nil once they've cleared every
+    /// boss in the raid. Only populated for guilds raid-rankings has data for; nil for the
+    /// timeline-only fallback case (see `standings(rankings:)`).
+    let currentBoss: Encounter?
+    /// This guild's own best pull percent/count on `currentBoss` — nil whenever they haven't
+    /// recorded an active (undefeated) pull on it yet, distinct from "we don't know."
+    let currentPullPercent: Double?
+    let currentPullCount: Int?
 
     var id: Int { guild.id }
 }

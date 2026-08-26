@@ -154,6 +154,9 @@ extension WorldFirstTracker {
         let bossesDown: Int
         let lastKillAt: Date?
         let isLive: Bool
+        let currentBoss: Encounter?
+        let currentPullPercent: Double?
+        let currentPullCount: Int?
     }
 
     /// One ranked row per guild, using raid-rankings (raider.io's live Desktop App pull
@@ -168,6 +171,7 @@ extension WorldFirstTracker {
     /// the top 50) — capping/pinning to a subset is a display concern the caller handles.
     func standings(rankings: [RaidRankingEntry], regionSlug: String = "world") -> [GuildStanding] {
         let timelineBest = bestProgressPerGuild(timeline(regionSlug: regionSlug))
+        let sortedEncounters = raid.encounters.sorted { $0.ordinal < $1.ordinal }
 
         var byGuildId: [Int: UnrankedStanding] = [:]
         for entry in rankings {
@@ -175,13 +179,26 @@ extension WorldFirstTracker {
             guard bossesDown > 0 else { continue }
             let lastKillAt = entry.encountersDefeated.map(\.firstDefeated).max()
             let isLive = timelineBest[entry.guild.id]?.isLive ?? false
+
+            // The boss right after their last confirmed kill, by raid order rather than by
+            // assuming `bossesDown` indexes directly into it — a guild could in principle have
+            // an out-of-order kill recorded, and this stays correct either way.
+            let defeatedSlugs = Set(entry.encountersDefeated.map(\.slug))
+            let currentBoss = sortedEncounters.first { !defeatedSlugs.contains($0.slug) }
+            let currentPull = currentBoss.flatMap { boss in
+                entry.encountersPulled.first { $0.slug == boss.slug && !$0.isDefeated }
+            }
+
             byGuildId[entry.guild.id] = UnrankedStanding(
-                guild: entry.guild, bossesDown: bossesDown, lastKillAt: lastKillAt, isLive: isLive
+                guild: entry.guild, bossesDown: bossesDown, lastKillAt: lastKillAt, isLive: isLive,
+                currentBoss: currentBoss, currentPullPercent: currentPull?.bestPercent,
+                currentPullCount: currentPull?.numPulls
             )
         }
         for best in timelineBest.values where byGuildId[best.guild.id] == nil {
             byGuildId[best.guild.id] = UnrankedStanding(
-                guild: best.guild, bossesDown: best.progress, lastKillAt: best.killedAt, isLive: best.isLive
+                guild: best.guild, bossesDown: best.progress, lastKillAt: best.killedAt, isLive: best.isLive,
+                currentBoss: nil, currentPullPercent: nil, currentPullCount: nil
             )
         }
 
@@ -196,7 +213,9 @@ extension WorldFirstTracker {
         return sorted.enumerated().map { index, entry in
             GuildStanding(
                 guild: entry.guild, rank: index + 1, bossesDown: entry.bossesDown,
-                lastKillAt: entry.lastKillAt, isLive: entry.isLive
+                lastKillAt: entry.lastKillAt, isLive: entry.isLive,
+                currentBoss: entry.currentBoss, currentPullPercent: entry.currentPullPercent,
+                currentPullCount: entry.currentPullCount
             )
         }
     }

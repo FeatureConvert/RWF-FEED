@@ -124,6 +124,13 @@ struct GuildStandingRow: View {
             parts.append("live now")
         }
         parts.append("\(standing.bossesDown) of \(totalBosses) bosses down")
+        if let currentBoss = standing.currentBoss {
+            if let percent = standing.currentPullPercent, let pulls = standing.currentPullCount {
+                parts.append("working on \(currentBoss.name), \(String(format: "%.2f%%", percent)), \(pulls) \(pulls == 1 ? "pull" : "pulls")")
+            } else {
+                parts.append("working on \(currentBoss.name)")
+            }
+        }
         parts.append("\(standing.guild.realm.name), \(standing.guild.region.shortName)")
         return parts.joined(separator: ", ")
     }
@@ -151,6 +158,17 @@ struct GuildStandingRow: View {
                         Text("\(standing.guild.realm.name) · \(standing.guild.region.shortName)")
                             .font(.system(size: 12))
                             .foregroundStyle(Theme.textSecondary)
+                        if let currentBoss = standing.currentBoss {
+                            if let percent = standing.currentPullPercent, let pulls = standing.currentPullCount {
+                                Text("\(currentBoss.name) — \(String(format: "%.2f%%", percent)) (\(pulls) \(pulls == 1 ? "pull" : "pulls"))")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.textSecondary)
+                            } else {
+                                Text("Working on \(currentBoss.name)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                        }
                     }
 
                     Spacer()
