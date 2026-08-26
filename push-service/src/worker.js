@@ -41,6 +41,10 @@
 
 const FEED_SLUG = "the-venomous-abyss-global-coverage";
 const RAID_SLUG = "the-venomous-abyss";
+// The Venomous Abyss's real boss count — a floor checkRaceComplete requires `encounterBySlug`
+// to actually reach before it will ever fire (see checkRaceComplete). A new raid tier needs
+// this updated alongside RAID_SLUG.
+const RAID_BOSS_COUNT = 8;
 const LAST_SEEN_KEY = "lastSeenPostId";
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
 // Matches NotificationPreferences.defaultHeartbreakThresholdPercent on the client — kept as a
@@ -405,7 +409,14 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
 /// as the rest of this file).
 async function checkRaceComplete(env, rankings, encounterBySlug, devices) {
   const totalBosses = Object.keys(encounterBySlug).length;
-  if (totalBosses === 0) return { ok: true, skipped: "no encounters" };
+  // Below the known real boss count, not just 0: raid-race is fetched fresh every tick with no
+  // retry (see the scheduled() call site), so a transient/partial 200 response that omits one
+  // boss would otherwise understate totalBosses for that single tick — and if the leader's
+  // confirmed kill count already met that understated total, this would fire the one-time,
+  // unrecoverable "Race Complete" push on a false positive (RACE_COMPLETE_KEY never resets, so
+  // there's no self-correction next tick). Requiring the known-good count means a partial
+  // response just gets treated the same as "race not complete" and retried next tick instead.
+  if (totalBosses < RAID_BOSS_COUNT) return { ok: true, skipped: "no encounters" };
 
   const leader = rankings.reduce((best, entry) => {
     return !best || entry.encountersDefeated.length > best.encountersDefeated.length ? entry : best;
