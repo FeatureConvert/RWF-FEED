@@ -1,5 +1,8 @@
 CREATE TABLE IF NOT EXISTS devices (
-  token TEXT PRIMARY KEY,
+  -- Matches DEVICE_TOKEN_PATTERN in worker.js (APNs tokens are 64 hex chars) — defense in
+  -- depth against the same shape ever landing in the table again by some path other than
+  -- /register, not a replacement for that endpoint's own validation.
+  token TEXT PRIMARY KEY CHECK (length(token) = 64 AND token NOT GLOB '*[^0-9a-fA-F]*'),
   raiderio_enabled INTEGER NOT NULL DEFAULT 1,
   wowhead_enabled INTEGER NOT NULL DEFAULT 1,
   spoiler_free_enabled INTEGER NOT NULL DEFAULT 0,
@@ -21,7 +24,7 @@ CREATE TABLE IF NOT EXISTS cron_state (
 -- entirely (liveactivity vs. alert), and the app can have a Live Activity running independent
 -- of whether regular push notifications are also on.
 CREATE TABLE IF NOT EXISTS live_activity_tokens (
-  push_token TEXT PRIMARY KEY
+  push_token TEXT PRIMARY KEY CHECK (length(push_token) = 64 AND push_token NOT GLOB '*[^0-9a-fA-F]*')
 );
 
 -- Periodic (guild, boss) pull-progress snapshots, used to compute a "trending toward a kill"
