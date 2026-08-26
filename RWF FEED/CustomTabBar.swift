@@ -24,8 +24,6 @@ struct CustomTabBar: View {
                     tabButton(for: tab)
                 }
             }
-            .padding(.top, 8)
-            .padding(.bottom, 4)
             .background(Theme.cardSurface)
         }
     }
@@ -44,6 +42,16 @@ struct CustomTabBar: View {
             }
             .foregroundStyle(isSelected ? Theme.accent : Theme.textSecondary)
             .frame(maxWidth: .infinity)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            // Fills the whole cell (padding included) rather than just the icon/label's
+            // intrinsic size, and makes the padding itself part of the tap target — without
+            // this, .frame(maxWidth: .infinity) only stretches width, so taps landing in the
+            // top/bottom padding (nearly a third of the row) miss entirely. Middle tabs like
+            // Kills eat that dead zone more than edge tabs, since a thumb swiping across the
+            // row naturally arcs off-center there.
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tab.title)
