@@ -22,14 +22,14 @@ struct RaceCompleteRecapView: View {
                 Section {
                     VStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
-                            .font(.system(size: 40))
+                            .font(.rwf(size: 40))
                             .foregroundStyle(Theme.accent)
                         Text("Race Complete")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.rwf(size: 13, weight: .bold))
                             .foregroundStyle(Theme.textSecondary)
                         if let winner {
                             Text("\(winner.guild.displayName) wins!")
-                                .font(.system(size: 22, weight: .bold))
+                                .font(.rwf(size: 22, weight: .bold))
                                 .foregroundStyle(Theme.textPrimary)
                         }
                     }
@@ -45,15 +45,15 @@ struct RaceCompleteRecapView: View {
                     ForEach(Array(standings.prefix(10).enumerated()), id: \.element.id) { index, standing in
                         HStack(spacing: 10) {
                             Text("\(index + 1)")
-                                .font(.system(size: 14, weight: .bold))
+                                .font(.rwf(size: 14, weight: .bold))
                                 .foregroundStyle(Theme.textSecondary)
                                 .frame(width: 22, alignment: .leading)
                             Text(standing.guild.displayName)
-                                .font(.system(size: 15))
+                                .font(.rwf(size: 15))
                                 .foregroundStyle(Theme.textPrimary)
                             Spacer()
                             Text("\(standing.bossesDown)/\(summaries.count)")
-                                .font(.system(size: 13))
+                                .font(.rwf(size: 13))
                                 .foregroundStyle(Theme.textSecondary)
                         }
                         .listRowBackground(Theme.cardSurface)
@@ -70,12 +70,12 @@ struct RaceCompleteRecapView: View {
                         HStack(spacing: 10) {
                             Group {
                                 Text(summary.boss.name)
-                                    .font(.system(size: 14))
+                                    .font(.rwf(size: 14))
                                     .foregroundStyle(Theme.textPrimary)
                                 Spacer()
                                 if let worldFirst = summary.worldFirst {
                                     Text(worldFirst.guild.displayName)
-                                        .font(.system(size: 13))
+                                        .font(.rwf(size: 13))
                                         .foregroundStyle(Theme.textSecondary)
                                 }
                             }

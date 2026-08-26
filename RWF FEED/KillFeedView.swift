@@ -112,13 +112,13 @@ struct BossGroupHeader: View {
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
 
             Text(boss.name)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.rwf(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
 
             Spacer()
 
             Image(systemName: "chevron.down")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.rwf(size: 12, weight: .semibold))
                 .foregroundStyle(Theme.textSecondary)
                 .rotationEffect(.degrees(isExpanded ? 0 : -90))
         }
@@ -157,7 +157,7 @@ struct KillFeedRow: View {
                 GuildAvatar(guild: event.guild)
 
                 Text(event.guild.displayName)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.rwf(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
 
                 Spacer()
@@ -167,11 +167,11 @@ struct KillFeedRow: View {
                         WorldFirstBadge()
                     } else {
                         Text(event.rankLabel)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.rwf(size: 13, weight: .semibold))
                             .foregroundStyle(Theme.textSecondary)
                     }
                     Text(RelativeTime.short(from: event.defeatedAt))
-                        .font(.system(size: 12))
+                        .font(.rwf(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                 }
             }

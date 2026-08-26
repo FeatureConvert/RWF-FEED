@@ -174,7 +174,7 @@ struct GuildStandingRow: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
                             Text(standing.guild.displayName)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.rwf(size: 15, weight: .semibold))
                                 .foregroundStyle(Theme.textPrimary)
                             // Purely visual here — kept inside the grouped/ignored HStack below
                             // like every other decorative element in this row. The actual tap
@@ -188,11 +188,11 @@ struct GuildStandingRow: View {
                             }
                         }
                         Text("\(standing.guild.realm.name) · \(standing.guild.region.shortName)")
-                            .font(.system(size: 12))
+                            .font(.rwf(size: 12))
                             .foregroundStyle(Theme.textSecondary)
                         if let currentPullLabel {
                             Text(currentPullLabel.visible)
-                                .font(.system(size: 11))
+                                .font(.rwf(size: 11))
                                 .foregroundStyle(Theme.textSecondary)
                         }
                     }
@@ -220,7 +220,7 @@ struct GuildStandingRow: View {
                 if let stream = standing.liveStream, let url = stream.twitchURL {
                     Link(destination: url) {
                         Image(systemName: "dot.radiowaves.left.and.right")
-                            .font(.system(size: 15))
+                            .font(.rwf(size: 15))
                             .foregroundStyle(Theme.accent)
                             .frame(width: 28, height: 28)
                             .contentShape(Rectangle())
@@ -231,7 +231,7 @@ struct GuildStandingRow: View {
 
                 Button(action: onTogglePin) {
                     Image(systemName: isPinned ? "star.fill" : "star")
-                        .font(.system(size: 15))
+                        .font(.rwf(size: 15))
                         .foregroundStyle(isPinned ? Theme.accent : Theme.textSecondary)
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())

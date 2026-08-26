@@ -49,7 +49,7 @@ struct GuildAvatar: View {
             } else {
                 Circle().fill(colors.background)
                 Text(initials)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.rwf(size: 12, weight: .bold))
                     .foregroundStyle(colors.foreground)
             }
         }
@@ -172,7 +172,7 @@ struct PullTrendLabel: View {
                 .accessibilityHidden(true)
             Text(trend.isStalled ? "Holding steady" : String(format: "%+.1f%% in the last hour", trend.percentChange))
         }
-        .font(.system(size: 11, weight: .medium))
+        .font(.rwf(size: 11, weight: .medium))
         .foregroundStyle(trend.isImproving ? Theme.accentText : Theme.textSecondary)
     }
 }

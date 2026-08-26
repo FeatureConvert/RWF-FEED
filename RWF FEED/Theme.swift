@@ -85,20 +85,61 @@ enum Theme {
 
     // MARK: Typography
 
-    /// Reproduces the spec's Inter weight/size/tracking table on the system font.
+    /// Reproduces the spec's Inter weight/size/tracking table on the system font, scaled by the
+    /// user's Dynamic Type setting via UIFontMetrics — `Font.system(size:weight:)` alone never
+    /// scales regardless of Dynamic Type, by design (only text-style-based fonts do). Scaled
+    /// relative to `.body` uniformly rather than a per-token text style: simpler than picking a
+    /// "correct" style per size, and every token in this design system moves together as text
+    /// size changes instead of drifting relative to each other.
+    ///
+    /// A `var`, not a `let`, at every call site below (`static var rankNumber: Font { ... }`,
+    /// not `static let rankNumber = ...`) — a `let` would cache the scaled value from whenever
+    /// it was first accessed and never update again for the rest of the process, even though
+    /// the system's text size can change live (Control Center) while the app stays foregrounded.
     static func font(size: CGFloat, weight: Font.Weight) -> Font {
-        .system(size: size, weight: weight)
+        let uiFont = UIFont.systemFont(ofSize: size, weight: weight.uiFontWeight)
+        return Font(UIFontMetrics.default.scaledFont(for: uiFont))
     }
 
-    static let authorName = font(size: 15, weight: .semibold)
-    static let postBody = font(size: 15, weight: .regular)
-    static let timestamp = font(size: 12, weight: .regular)
-    static let tagLabel = font(size: 11, weight: .semibold)
+    static var authorName: Font { font(size: 15, weight: .semibold) }
+    static var postBody: Font { font(size: 15, weight: .regular) }
+    static var timestamp: Font { font(size: 12, weight: .regular) }
+    static var tagLabel: Font { font(size: 11, weight: .semibold) }
     static let tagLabelTracking: CGFloat = 11 * 0.02
-    static let rankNumber = font(size: 17, weight: .semibold)
-    static let bossProgress = font(size: 15, weight: .semibold)
-    static let elapsedTimer = font(size: 11, weight: .regular)
-    static let liveBadgeLabel = font(size: 10, weight: .bold)
+    static var rankNumber: Font { font(size: 17, weight: .semibold) }
+    static var bossProgress: Font { font(size: 15, weight: .semibold) }
+    static var elapsedTimer: Font { font(size: 11, weight: .regular) }
+    static var liveBadgeLabel: Font { font(size: 10, weight: .bold) }
     static let liveBadgeTracking: CGFloat = 10 * 0.04
-    static let screenTitle = font(size: 20, weight: .medium)
+    static var screenTitle: Font { font(size: 20, weight: .medium) }
+}
+
+extension Font {
+    /// A Dynamic-Type-scaled drop-in for `.system(size:weight:)`, which never scales on its
+    /// own. Same UIFontMetrics mechanism as `Theme.font(size:weight:)` — exposed here too since
+    /// most of this app's fonts are built ad hoc inline (`.font(.system(size: 12))`) rather
+    /// than through a named Theme token, and all of them should scale the same way.
+    static func rwf(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        Theme.font(size: size, weight: weight)
+    }
+}
+
+extension Font.Weight {
+    /// SwiftUI's `Font.Weight` and UIKit's `UIFont.Weight` are separate types with no built-in
+    /// bridge — needed here because UIFontMetrics (the only API that scales a custom point size
+    /// with Dynamic Type) is UIKit, not SwiftUI.
+    var uiFontWeight: UIFont.Weight {
+        switch self {
+        case .black: return .black
+        case .heavy: return .heavy
+        case .bold: return .bold
+        case .semibold: return .semibold
+        case .medium: return .medium
+        case .regular: return .regular
+        case .light: return .light
+        case .thin: return .thin
+        case .ultraLight: return .ultraLight
+        default: return .regular
+        }
+    }
 }

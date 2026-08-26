@@ -84,10 +84,10 @@ struct GuildDetailView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(standing.guild.displayName)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.rwf(size: 17, weight: .semibold))
                         .foregroundStyle(Theme.textPrimary)
                     Text("\(standing.guild.realm.name) · \(standing.guild.region.shortName)")
-                        .font(.system(size: 12))
+                        .font(.rwf(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                 }
 
@@ -98,7 +98,7 @@ struct GuildDetailView: View {
                         .font(Theme.bossProgress)
                         .foregroundStyle(Theme.textPrimary)
                     Text("\(standing.bossesDown)/\(encounters.count) M")
-                        .font(.system(size: 12))
+                        .font(.rwf(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                         .monospacedDigit()
                 }
@@ -115,7 +115,7 @@ struct GuildDetailView: View {
                         LiveBadge()
                             .accessibilityHidden(true)
                         Text(streamLabel(stream))
-                            .font(.system(size: 12))
+                            .font(.rwf(size: 12))
                             .foregroundStyle(Theme.accentText)
                             .lineLimit(1)
                     }
@@ -177,10 +177,10 @@ struct GuildDetailView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(boss.name)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.rwf(size: 15, weight: .semibold))
                             .foregroundStyle(Theme.textPrimary)
                         Text(subtitle)
-                            .font(.system(size: 12))
+                            .font(.rwf(size: 12))
                             .foregroundStyle(Theme.textSecondary)
                     }
 
@@ -227,11 +227,11 @@ struct GuildDetailView: View {
             switch status {
             case .killed:
                 Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 18))
+                    .font(.rwf(size: 18))
                     .foregroundStyle(Theme.accent)
             case .inProgress(let bestPercent, _):
                 Text(String(format: "%.2f%%", bestPercent))
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.rwf(size: 18, weight: .bold))
                     .foregroundStyle(Theme.accentText)
                     .monospacedDigit()
             case .notReached:

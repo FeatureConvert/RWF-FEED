@@ -124,7 +124,7 @@ struct ScreenHeader: View {
                                     .accessibilityHidden(true)
                             }
                             Text(creditLabel)
-                                .font(.system(size: 11))
+                                .font(.rwf(size: 11))
                                 .foregroundStyle(Theme.textSecondary)
                         }
                     }
@@ -133,7 +133,7 @@ struct ScreenHeader: View {
                     TimelineView(.periodic(from: lastUpdated, by: 5)) { context in
                         Text("Updated \(RelativeTime.short(from: lastUpdated, to: context.date))")
                     }
-                    .font(.system(size: 12))
+                    .font(.rwf(size: 12))
                     .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -165,6 +165,11 @@ struct FeedPostRow: View {
     /// already tried moving HTML parsing off it once and had to revert the whole change, so
     /// this is caching, not threading.
     @State private var blocks: [PostContentBlock] = []
+    /// Included in the .task's id below so a genuine Dynamic Type size change forces a
+    /// re-parse — the cached HTML→AttributedString conversion bakes in a scaled px font-size
+    /// (see HTMLContent.attributedString), so it needs to actually re-run when text size
+    /// changes rather than staying cached at whatever size was true when the post first loaded.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.cardRowGap) {
@@ -174,7 +179,7 @@ struct FeedPostRow: View {
                     .foregroundStyle(Theme.textPrimary)
                 if post.isPriority {
                     Image(systemName: "star.fill")
-                        .font(.system(size: 14))
+                        .font(.rwf(size: 14))
                         .foregroundStyle(Theme.star)
                         .accessibilityLabel("Priority post")
                 }
@@ -218,7 +223,7 @@ struct FeedPostRow: View {
         }
         .padding(Theme.cardPadding)
         .background(Theme.cardSurface, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
-        .task(id: post.id) {
+        .task(id: "\(post.id)-\(dynamicTypeSize)") {
             blocks = PostContent.parseBlocks(from: post.content ?? "")
         }
     }

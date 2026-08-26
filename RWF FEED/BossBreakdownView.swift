@@ -34,11 +34,11 @@ struct BossBreakdownView: View {
                                 .foregroundStyle(Theme.accent)
                                 .accessibilityHidden(true)
                             Text("Race Complete — View Final Standings")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.rwf(size: 14, weight: .semibold))
                                 .foregroundStyle(Theme.textPrimary)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.rwf(size: 12, weight: .semibold))
                                 .foregroundStyle(Theme.textSecondary)
                                 .accessibilityHidden(true)
                         }
@@ -156,26 +156,26 @@ struct BossSummaryRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Group {
                         Text(summary.boss.name)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.rwf(size: 15, weight: .semibold))
                             .foregroundStyle(Theme.textPrimary)
 
                         if let worldFirst = summary.worldFirst {
                             HStack(spacing: 4) {
                                 WorldFirstBadge()
                                 Text(worldFirst.guild.displayName)
-                                    .font(.system(size: 12))
+                                    .font(.rwf(size: 12))
                                     .foregroundStyle(Theme.textSecondary)
                             }
                         } else if let bestPull = summary.bestPull {
                             Text("Best pull \(String(format: "%.2f%%", bestPull.percent)) remaining — \(bestPull.guild.displayName) (\(bestPull.pullCount.pullsLabel))")
-                                .font(.system(size: 12))
+                                .font(.rwf(size: 12))
                                 .foregroundStyle(Theme.textSecondary)
                             if let trend {
                                 PullTrendLabel(trend: trend)
                             }
                         } else {
                             Text("Not yet reached")
-                                .font(.system(size: 12))
+                                .font(.rwf(size: 12))
                                 .foregroundStyle(Theme.textSecondary)
                         }
                     }
@@ -188,7 +188,7 @@ struct BossSummaryRow: View {
                                 Image(systemName: "play.circle.fill")
                                 Text("Watch the Kill")
                             }
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.rwf(size: 12, weight: .medium))
                             .foregroundStyle(Theme.accentText)
                         }
                         .accessibilityLabel("Watch the kill VOD")
@@ -199,7 +199,7 @@ struct BossSummaryRow: View {
 
                 if let worldFirst = summary.worldFirst {
                     Text(RelativeTime.short(from: worldFirst.at))
-                        .font(.system(size: 12))
+                        .font(.rwf(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                         // Folded into accessibilitySummary above.
                         .accessibilityHidden(true)

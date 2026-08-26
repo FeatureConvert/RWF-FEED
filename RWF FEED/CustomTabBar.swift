@@ -38,9 +38,9 @@ struct CustomTabBar: View {
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: tab.icon)
-                    .font(.system(size: 19))
+                    .font(.rwf(size: 19))
                 Text(tab.title)
-                    .font(.system(size: 9.5, weight: .medium))
+                    .font(.rwf(size: 9.5, weight: .medium))
             }
             .foregroundStyle(isSelected ? Theme.accent : Theme.textSecondary)
             .frame(maxWidth: .infinity)

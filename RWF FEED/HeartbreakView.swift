@@ -101,7 +101,7 @@ struct CloseCallRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(call.guild.displayName)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.rwf(size: 15, weight: .semibold))
                         .foregroundStyle(Theme.textPrimary)
                     HStack(spacing: 6) {
                         AsyncImage(url: call.boss.fullIconURL) { phase in
@@ -116,7 +116,7 @@ struct CloseCallRow: View {
                         .accessibilityHidden(true)
 
                         Text(call.boss.name)
-                            .font(.system(size: 13))
+                            .font(.rwf(size: 13))
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
@@ -125,11 +125,11 @@ struct CloseCallRow: View {
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(String(format: "%.2f%%", call.percent))
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.rwf(size: 18, weight: .bold))
                         .foregroundStyle(Theme.accentText)
                         .monospacedDigit()
                     Text(call.pullCount.pullsLabel)
-                        .font(.system(size: 12))
+                        .font(.rwf(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                     if let trend {
                         PullTrendLabel(trend: trend)

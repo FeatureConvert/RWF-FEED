@@ -36,8 +36,13 @@ enum HTMLContent {
         // blank line so removed embeds don't leave oversized gaps.
         cleaned = cleaned.replacingOccurrences(of: #"(?:\s*<br\s*/?>\s*){3,}"#, with: "<br/><br/>", options: .regularExpression)
 
+        // 15pt scaled the same way the rest of the app's type scale is (Theme.font) — the
+        // HTML importer has no concept of Dynamic Type on its own, so without this the post
+        // body would be the one piece of text in the app permanently stuck at a fixed size
+        // regardless of the user's text-size setting.
+        let scaledSize = UIFontMetrics.default.scaledFont(for: UIFont.systemFont(ofSize: 15)).pointSize
         let wrapped = """
-        <span style="font-family: -apple-system; font-size: 15px;">\(cleaned)</span>
+        <span style="font-family: -apple-system; font-size: \(scaledSize)px;">\(cleaned)</span>
         """
         guard let data = wrapped.data(using: .utf8),
               let ns = try? NSAttributedString(
