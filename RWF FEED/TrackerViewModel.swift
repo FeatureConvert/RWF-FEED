@@ -10,6 +10,14 @@ import Combine
 final class TrackerViewModel: ObservableObject {
     @Published private(set) var standings: [GuildStanding] = []
     @Published private(set) var raid: RaidInfo?
+    /// Every currently-streaming guild, highest viewer count first — backs the Live Now
+    /// strip. Derived from `standings` rather than fetched separately: raid-race's
+    /// `streamers` list is already folded into each GuildStanding.liveStream.
+    var liveStandings: [GuildStanding] {
+        standings
+            .filter { $0.liveStream != nil }
+            .sorted { ($0.liveStream?.viewerCount ?? 0) > ($1.liveStream?.viewerCount ?? 0) }
+    }
     /// The full raid-rankings entry per guild — what the per-guild detail screen renders
     /// (boss-by-boss kill times, pull counts) beyond the condensed GuildStanding row.
     @Published private(set) var rankingByGuildId: [Int: RaidRankingEntry] = [:]

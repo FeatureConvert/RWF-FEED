@@ -19,6 +19,10 @@ struct TrackerView: View {
                     showingSettings = true
                 }
 
+                if !viewModel.liveStandings.isEmpty {
+                    LiveNowStrip(liveStandings: viewModel.liveStandings)
+                }
+
                 Group {
                     if viewModel.standings.isEmpty && viewModel.isLoading {
                         ProgressView("Loading tracker…")
@@ -83,6 +87,71 @@ struct TrackerView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
+    }
+}
+
+/// A horizontally-scrolling strip of every currently-streaming guild, above the standings
+/// list — the accurate answer to "who's live right now," not just the badge on their row
+/// (which only shows once you've scrolled to their rank). Hidden entirely (not rendered at
+/// all — see TrackerView) when nobody's streaming, rather than showing empty chrome.
+private struct LiveNowStrip: View {
+    let liveStandings: [GuildStanding]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.cardGap) {
+                ForEach(liveStandings) { standing in
+                    if let stream = standing.liveStream, let url = stream.twitchURL {
+                        Link(destination: url) {
+                            LiveStreamCard(standing: standing, stream: stream)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, Theme.screenEdgeMargin)
+        }
+        .padding(.bottom, Theme.cardGap)
+    }
+}
+
+private struct LiveStreamCard: View {
+    let standing: GuildStanding
+    let stream: LiveStream
+
+    private var subtitle: String {
+        let title = stream.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? stream.channelName : title
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            GuildAvatar(guild: standing.guild)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    LiveBadge()
+                    Text(standing.guild.displayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .lineLimit(1)
+                }
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+                if let viewers = stream.viewerCount {
+                    Text("\(viewers) watching")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.accentText)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .frame(width: 220, alignment: .leading)
+        .background(Theme.cardSurface, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
     }
 }
 
