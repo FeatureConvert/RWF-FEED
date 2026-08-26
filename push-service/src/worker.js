@@ -415,8 +415,14 @@ async function checkRaceComplete(env, rankings, encounterBySlug, devices) {
   const alreadyAnnounced = await getCronState(env, RACE_COMPLETE_KEY);
   if (alreadyAnnounced) return { ok: true, skipped: "already announced" };
 
-  await setCronState(env, RACE_COMPLETE_KEY, JSON.stringify({ winner: leader.guild.displayName, announcedAt: new Date().toISOString() }));
-
+  // Written only after every send is attempted (matching checkHeartbreaks/checkWorldFirstKills
+  // above) rather than before the loop — this flag never resets, so writing it first meant a
+  // Worker interruption (CPU/wall-time limit, isolate eviction) partway through the loop left
+  // every device after that point permanently unable to receive this push: the next tick would
+  // see the flag already set and skip re-sending. Writing after means an interrupted tick just
+  // retries the whole loop next time (some devices getting a harmless duplicate is a much
+  // smaller cost than others never getting the push at all for one of the app's only two
+  // one-time, unrecoverable notifications — see checkLiveActivity's finale for the other).
   let pushCount = 0;
   for (const device of devices) {
     const spoilerFree = device.spoilerFreeEnabled === true;
@@ -427,6 +433,7 @@ async function checkRaceComplete(env, rankings, encounterBySlug, devices) {
     await sendPush(env, device.token, title, body, "race-complete", "bosses");
     pushCount++;
   }
+  await setCronState(env, RACE_COMPLETE_KEY, JSON.stringify({ winner: leader.guild.displayName, announcedAt: new Date().toISOString() }));
   return { ok: true, raceComplete: true, winner: leader.guild.displayName, pushCount };
 }
 
