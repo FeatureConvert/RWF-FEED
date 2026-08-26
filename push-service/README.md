@@ -56,6 +56,14 @@ enough to be worth the complexity) — it's an all-or-nothing category, same as
   Upserts by token — a device that re-registers gets its existing entry's preferences
   updated, not a duplicate. A `BadDeviceToken`/410 response from APNs on send removes
   the device automatically (e.g. after a reinstall).
+- **`POST /live-activity/register`** / **`POST /live-activity/unregister`**: `{ "pushToken": "<hex>" }`.
+  Registers/removes a Live Activity's own ActivityKit push token (separate from a device's
+  regular APNs token from `/register` above), so `checkLiveActivity` can push content updates
+  as the leader's frontier boss changes, and a final "Race Complete" update when it clears.
+  Capped at `MAX_LIVE_ACTIVITIES`.
+- **`GET /velocity`**: read-only, unauthenticated — returns recent (guild, boss) pull-percent
+  snapshots recorded by the periodic cron (`snapshotPullVelocity`), used by the app's own
+  "trending toward a kill" indicator on the Bosses/Heartbreak tabs.
 - **`GET /check`**: manually triggers all three checks above. Returns
   `{ posts, raiderioEvents, wowheadNews }`.
 - **`GET /test-push`**: sends a fixed test notification directly to every

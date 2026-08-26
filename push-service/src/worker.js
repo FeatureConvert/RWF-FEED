@@ -21,6 +21,13 @@
 //   POST /register  { "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool,
 //                      "spoilerFreeEnabled": bool, "heartbreakThresholdPercent": number,
 //                      "notifyNonWorldFirstHeartbreaks": bool }
+//   POST /live-activity/register  { "pushToken": "<hex>" } — registers a Live Activity's own
+//        ActivityKit push token (separate from a device's regular APNs token above), so
+//        checkLiveActivity can push content updates as the leader's frontier boss changes.
+//   POST /live-activity/unregister  { "pushToken": "<hex>" }
+//   GET  /velocity  — read-only, unauthenticated; returns recent (guild, boss) pull-percent
+//        snapshots from the periodic cron (see snapshotPullVelocity) for the client's own
+//        "trending toward a kill" indicator. See getVelocitySnapshots for the response shape.
 //   GET  /check  — manually trigger a poll, for testing (requires X-Admin-Secret header)
 //   GET  /test-push — send a placeholder push to every registered device (same header)
 //
@@ -181,10 +188,11 @@ async function checkForNewPosts(env) {
   }
 
   // This cron overlapping a manual /check could both read the same lastSeenRaw before either
-  // writes back and both push the same "new" post — apns-collapse-id means the device sees one
-  // alert, not two, so this is a latent double-send rather than a user-visible bug. Same
-  // tradeoff as the device-storage races documented near addDevice: not worth a transaction
-  // for this app's scale.
+  // writes back and both push the same "new" post — apns-collapse-id only replaces a
+  // still-undelivered/undismissed notification with the same ID, so this is a latent
+  // double-send that's usually not user-visible but can be if the user's already seen and
+  // dismissed the first copy before the second arrives. Same tradeoff as the device-storage
+  // races documented near addDevice: not worth a transaction for this app's scale.
   const maxId = posts.reduce((m, p) => Math.max(m, p.id), 0);
   const lastSeenRaw = await getCronState(env, LAST_SEEN_KEY);
 
