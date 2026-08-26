@@ -279,8 +279,13 @@ struct SettingsView: View {
                     liveActivityErrorMessage = "The race hasn't started yet — check back once guilds are pulling."
                     return
                 }
-                if !liveActivity.start(content: content) {
-                    liveActivityErrorMessage = "Couldn't start Live Activity — check that Live Activities are allowed for this app in Settings."
+                do {
+                    try liveActivity.start(content: content)
+                } catch {
+                    // Surfaces ActivityKit's actual reason (e.g. "Live Activities are disabled
+                    // in Settings" vs. the OS's concurrent-activity limit) instead of a single
+                    // generic message that's only ever right for one of those causes.
+                    liveActivityErrorMessage = "Couldn't start Live Activity: \(error.localizedDescription)"
                 }
             } catch {
                 liveActivityErrorMessage = "Couldn't reach raider.io. Try again in a moment."

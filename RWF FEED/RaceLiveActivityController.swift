@@ -36,29 +36,24 @@ final class RaceLiveActivityController: ObservableObject {
         }
     }
 
-    /// Returns false when `Activity.request` itself throws (e.g. Live Activities disabled in
-    /// system Settings, or the app's hit the OS's concurrent-activity limit) — distinct from the
+    /// Rethrows when `Activity.request` itself throws (e.g. Live Activities disabled in system
+    /// Settings, or the app's hit the OS's concurrent-activity limit) — distinct from the
     /// early-return "one's already running" case just above it, which isn't a failure. The
-    /// caller (SettingsView) surfaces false as its own alert; previously this was only ever
-    /// NSLog'd, so the Start button just silently reverted with no feedback at all.
-    @discardableResult
-    func start(content: RaceLiveActivityAttributes.ContentState) -> Bool {
-        guard Activity<RaceLiveActivityAttributes>.activities.isEmpty else { return true }
+    /// caller (SettingsView) surfaces the real error as its own alert; previously this was only
+    /// ever NSLog'd (and even after that was fixed to report *a* failure, the actual `Error` was
+    /// still being discarded rather than shown, so every failure read as the same generic
+    /// "check Settings" message regardless of the real cause).
+    func start(content: RaceLiveActivityAttributes.ContentState) throws {
+        guard Activity<RaceLiveActivityAttributes>.activities.isEmpty else { return }
         let attributes = RaceLiveActivityAttributes(raidName: "The Venomous Abyss")
-        do {
-            let activity = try Activity.request(
-                attributes: attributes,
-                content: .init(state: content, staleDate: nil),
-                pushType: .token
-            )
-            isActive = true
-            observePushToken(for: activity)
-            observeActivityState(for: activity)
-            return true
-        } catch {
-            NSLog("RaceLiveActivityController: failed to start Live Activity: %@", String(describing: error))
-            return false
-        }
+        let activity = try Activity.request(
+            attributes: attributes,
+            content: .init(state: content, staleDate: nil),
+            pushType: .token
+        )
+        isActive = true
+        observePushToken(for: activity)
+        observeActivityState(for: activity)
     }
 
     func stop() {
