@@ -1,6 +1,6 @@
 # Privacy Policy — Azeroth Watch
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-26_
 
 Azeroth Watch ("the app," "we," "us") is a fan-made, unofficial companion app for tracking
 World of Warcraft's Race to World First. This policy explains what data the app collects and
@@ -15,6 +15,14 @@ device — new coverage posts, close-call alerts, World First kill announcements
 based on the categories you enable in Settings. This token is not linked to your name, Apple
 ID, email, or any other identity, is never shared with or sold to third parties, and is never
 used for advertising or cross-app tracking.
+
+**Live Activity token.** If you turn on the Live Activity from Settings (showing the race
+leader's current boss on your Lock Screen and in the Dynamic Island), Apple assigns that Live
+Activity its own separate push token, distinct from the device push token above. We send this
+token to the same server, solely so we can push content updates to that Live Activity as the
+race leader's status changes. Same handling as the device push token: not linked to your
+identity, never shared or sold, never used for advertising or tracking, and removed from our
+server when you turn the Live Activity off or Apple reports the token invalid.
 
 **Nothing else.** The app does not require or support account creation or sign-in. It does
 not collect your name, email, location, contacts, photos, browsing history, or any other

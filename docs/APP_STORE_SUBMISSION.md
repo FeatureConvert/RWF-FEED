@@ -98,6 +98,40 @@ mode, default startup tab, feedback email, all the attribution/legal content des
 above), an in-app browser for all external links, a watchOS companion app with 4 complication
 families, and an iOS home-screen widget.
 
+## Features added since 1.0 (as of 2026-08-26)
+
+Shipped after the "Feature set as of this submission pass" section above was written — not yet
+reflected in the App Store metadata draft in #6 below. Frozen as a snapshot the same way that
+section is; add another dated section rather than editing either in place when more ships.
+
+- **Live Activity** — the race leader's current boss and best live pull on the Lock Screen and
+  in the Dynamic Island, updating in real time even while the app is closed. Toggled from
+  Settings.
+- **Race Complete** — a distinct, one-time push and a Bosses-tab recap screen (final standings,
+  per-boss summary) once the world leader clears every boss, plus a proper Live Activity finale
+  instead of it silently timing out.
+- **Pull Velocity** — a "trending toward a kill" indicator (e.g. "−4.2% in the last hour") on
+  live pulls in Bosses and Heartbreak, backed by periodic server-side snapshots.
+- **TipKit onboarding** — first-run tooltips explaining Heartbreak, Kills, and the Close Call
+  Threshold setting.
+- **Accessibility pass** — VoiceOver labels and row grouping across every screen, Reduce Motion
+  support, and Dynamic Type support (every font in the app now scales with the user's
+  text-size setting).
+- **Guild detail screen** — tap any Tracker row for a guild's full boss-by-boss progression
+  (kill times, pull counts, live best-pull progress) plus a live-stream link when they're
+  broadcasting.
+- **Region filter** — Tracker/Kills/Bosses/Heartbreak can be filtered to one region's guilds
+  (push notifications always stay global regardless of this filter).
+- **Pinned guilds** — pin any guild to keep it visible in the Tracker regardless of rank.
+- **Accurate live-stream badges** — sourced from raid-race's own per-guild stream list (was a
+  coarser sampled heuristic before).
+- **More accurate standings** — Tracker/Kills now source directly from raider.io's
+  raid-rankings endpoint (their own served rank, the full tracked field) instead of a timeline
+  endpoint that only samples ~3 guilds per progress step.
+
+Live Activity and Race Complete in particular are screenshot-worthy and currently absent from
+the description draft in #6 — worth weaving in before actually submitting.
+
 ## Still needed before submitting
 
 ### 1. App Store Connect app record
@@ -143,7 +177,7 @@ from the Simulator once we're ready — no real device needed for these.
 **Subtitle** (27/30 chars):
 > Race to World First Tracker
 
-**Description** (~1,300/4,000 chars):
+**Description** (~1,650/4,000 chars):
 > Follow World of Warcraft's Race to World First in real time.
 >
 > Azeroth Watch tracks Mythic raid progress across every competing guild, built on Raider.IO's
@@ -163,6 +197,11 @@ from the Simulator once we're ready — no real device needed for these.
 > alerts, World First kill announcements, and WoW news, each independently toggleable. Want to
 > follow the race without spoilers? Turn on Spoiler-Free Mode and kill announcements are
 > redacted until you're ready to look.
+>
+> A Live Activity puts the race leader's current boss and best live pull right on your Lock
+> Screen and in the Dynamic Island, updating in real time even while the app is closed — and
+> when the race finally ends, a dedicated Race Complete push and recap screen show you the
+> final standings.
 >
 > A watchOS companion app and complications put the current boss and closest pull right on
 > your wrist, and a home screen widget keeps it visible without opening the app.
