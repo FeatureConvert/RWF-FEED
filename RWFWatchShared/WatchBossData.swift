@@ -171,7 +171,8 @@ enum RWFWatchData {
             URLQueryItem(name: "difficulty", value: "mythic"),
         ]
         guard let url = components.url else { throw URLError(.badURL) }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(from: url)
+        try validate(response)
         return try decoder.decode(RaidRaceResponse.self, from: data).worldFirstTracker.raid.encounters
     }
 
@@ -183,7 +184,18 @@ enum RWFWatchData {
             URLQueryItem(name: "region", value: "world"),
         ]
         guard let url = components.url else { throw URLError(.badURL) }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(from: url)
+        try validate(response)
         return try decoder.decode(RaidRankingsResponse.self, from: data).raidRankings
+    }
+
+    /// Mirrors RaiderIOService's own `validate(_:)` — without this, a non-2xx response (e.g. a
+    /// maintenance page or rate-limit response with an HTML/error body) relied entirely on JSON
+    /// decode failure to be caught, which happens to work today but isn't guaranteed for every
+    /// possible error body shape.
+    private static func validate(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
+            throw URLError(.badServerResponse)
+        }
     }
 }
