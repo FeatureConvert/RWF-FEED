@@ -72,7 +72,17 @@ struct WatchContentView: View {
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .task { await refresh() }
+        .task {
+            // Loops for as long as the view stays on screen — SwiftUI cancels a `.task` when
+            // its view disappears, so this doesn't keep running once the watch face/app
+            // switches away. Previously this only ever ran once on appear, so the on-wrist app
+            // (and, via reloadAllTimelines, the complications) went stale until the next manual
+            // pull-to-refresh or the next budgeted complication tick.
+            while !Task.isCancelled {
+                await refresh()
+                try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
+            }
+        }
         .refreshable { await refresh() }
     }
 

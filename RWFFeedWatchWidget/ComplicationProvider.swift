@@ -29,8 +29,12 @@ struct ComplicationProvider: TimelineProvider {
         Task {
             let entry = ComplicationEntry(date: Date(), boss: await RWFWatchData.fetchCurrentBoss())
             // watchOS budgets complication refreshes even more tightly than iOS Home Screen
-            // widgets — this is a request, not a guarantee of actual cadence.
-            let nextRefresh = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
+            // widgets — this is a request, not a guarantee of actual cadence. Asking for 5
+            // minutes (down from 15) doesn't bypass that budget, but it does mean whatever
+            // budget watchOS does grant gets used at the shortest interval we're allowed to
+            // ask for, rather than us leaving cadence on the table by asking for less often
+            // than the budget could support.
+            let nextRefresh = Calendar.current.date(byAdding: .minute, value: 5, to: Date()) ?? Date().addingTimeInterval(300)
             completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
         }
     }
