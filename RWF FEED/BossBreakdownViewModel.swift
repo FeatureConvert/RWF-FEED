@@ -69,7 +69,7 @@ final class BossBreakdownViewModel: ObservableObject {
                 updated.vodURL = vodURL
                 return BossSummary(boss: summary.boss, worldFirst: updated, bestPull: summary.bestPull)
             }
-            let worldStandings = tracker.standings(rankings: rankings, regionSlug: "world")
+            let worldStandings = tracker.standings(rankings: rankings)
             finalStandings = worldStandings
             isRaceComplete = (worldStandings.first?.bossesDown ?? 0) >= tracker.raid.encounters.count
                 && !tracker.raid.encounters.isEmpty

@@ -74,14 +74,38 @@ struct RaidRaceResponse: Decodable {
     let worldFirstTracker: WorldFirstTracker
 }
 
+/// Only `raid` (encounter metadata) and `streamers` (live Twitch streams) are decoded from
+/// raid-race. The response also carries a `timelines` array, but it's a *sample* — at most 3
+/// guilds per progress step, regardless of `totalGuilds` (confirmed live: a step reporting
+/// 263 guilds listed 3) — so anything derived from it (standings, kill ranks) is missing
+/// guilds and mis-attributes World Firsts. The full leaderboard lives in raid-rankings
+/// instead; see WorldFirstTracker.standings()/killFeedGroups().
 struct WorldFirstTracker: Decodable {
-    let timelines: [RegionTimeline]
     let raid: RaidInfo
+    let streamers: [StreamerEntry]
+
+    enum CodingKeys: String, CodingKey {
+        case raid, streamers
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        raid = try container.decode(RaidInfo.self, forKey: .raid)
+        // Lossy on purpose: one malformed stream entry (Twitch payload shapes drift) should
+        // drop that entry, not fail the whole tracker fetch.
+        streamers = try container.decodeIfPresent([Failable<StreamerEntry>].self, forKey: .streamers)?
+            .compactMap(\.value) ?? []
+    }
 }
 
-struct RegionTimeline: Decodable {
-    let region: RegionRef
-    let timeline: [ProgressStep]
+/// Wraps a Decodable so one malformed array element degrades to nil instead of failing the
+/// parent array's decode.
+struct Failable<T: Decodable>: Decodable {
+    let value: T?
+
+    init(from decoder: Decoder) throws {
+        value = try? T(from: decoder)
+    }
 }
 
 struct RegionRef: Decodable {
@@ -95,20 +119,23 @@ struct RegionRef: Decodable {
     }
 }
 
-struct ProgressStep: Decodable {
-    let progress: Int
-    let totalGuilds: Int
-    let guilds: [GuildKill]
-}
-
-struct GuildKill: Decodable {
-    let defeatedAt: Date?
+/// One live Twitch stream from a race guild's roster, from raid-race's top-level `streamers`
+/// array — the accurate "who is live right now" source (per-guild, with channel/title/viewers).
+struct StreamerEntry: Decodable {
     let guild: RaceGuild
-    let streamers: StreamerInfo
+    let stream: StreamInfo
 }
 
-struct StreamerInfo: Decodable {
-    let count: Int
+struct StreamInfo: Decodable {
+    /// The Twitch channel login (e.g. "sinicard") — what twitch.tv URLs are built from.
+    let name: String
+    let title: String?
+    let viewerCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case name, title
+        case viewerCount = "viewer_count"
+    }
 }
 
 struct RaceGuild: Decodable, Identifiable, Equatable {
@@ -178,18 +205,30 @@ struct GuildStanding: Identifiable {
     }
 
     let guild: RaceGuild
-    /// Position in the full leaderboard (not the index within whatever subset of standings is
-    /// actually being displayed) — pinning a guild outside the visible top 25 still needs to
-    /// show its real rank, not "1st" just because it's first in a pinned section.
+    /// raider.io's own served world rank from raid-rankings — not an index this app derives,
+    /// so it stays correct even though we only see their tracked top ~50 guilds.
     let rank: Int
     let bossesDown: Int
     let lastKillAt: Date?
-    let isLive: Bool
-    /// nil once they've cleared every boss in the raid, or for the timeline-only fallback case
-    /// raid-rankings has no data for at all (see `standings(rankings:)`).
+    /// A guild's live Twitch presence, condensed from raid-race's `streamers` array (the
+    /// guild's highest-viewer stream when several of their raiders are live) — replaces a
+    /// plain live/not-live flag with something the UI can actually link to.
+    let liveStream: LiveStream?
+    /// nil once they've cleared every boss in the raid, or while raid-rankings has no pull
+    /// recorded yet for the boss they just unlocked.
     let currentPull: CurrentPull?
 
+    var isLive: Bool { liveStream != nil }
     var id: Int { guild.id }
+}
+
+/// A guild's live Twitch presence, condensed from raid-race's `streamers` array.
+struct LiveStream {
+    let channelName: String
+    let title: String?
+    let viewerCount: Int?
+
+    var twitchURL: URL? { URL(string: "https://www.twitch.tv/\(channelName)") }
 }
 
 // MARK: - Derived kill-feed event (one row per boss kill, across every guild)
@@ -238,6 +277,10 @@ struct RaidRankingsResponse: Decodable {
 
 struct RaidRankingEntry: Decodable {
     let guild: RaceGuild
+    /// raider.io's own served world rank — the authoritative leaderboard position. Standings
+    /// are ordered by this directly rather than re-derived, so it stays correct even though we
+    /// only ever see the tracked top ~50 guilds.
+    let rank: Int
     let encountersDefeated: [EncounterDefeatEntry]
     let encountersPulled: [EncounterPullEntry]
 }

@@ -128,102 +128,49 @@ private func nextUndefeatedBoss(in sortedEncounters: [Encounter], excluding defe
     sortedEncounters.first { !defeatedSlugs.contains($0.slug) }
 }
 
-// MARK: - Deriving per-guild standings from the timeline buckets
+// MARK: - Deriving per-guild standings from raid-rankings
 
 extension WorldFirstTracker {
-    private struct BestProgress {
-        let guild: RaceGuild
-        let progress: Int
-        let killedAt: Date?
-        let isLive: Bool
-    }
-
-    private func timeline(regionSlug: String) -> [ProgressStep] {
-        timelines.first(where: { $0.region.slug == regionSlug })?.timeline
-            ?? timelines.first?.timeline
-            ?? []
-    }
-
-    /// One entry per guild: the highest progress they've reached, when they got there, and
-    /// whether they're currently streaming — shared by every view below that ranks guilds.
-    private func bestProgressPerGuild(_ timeline: [ProgressStep]) -> [Int: BestProgress] {
-        var best: [Int: BestProgress] = [:]
-        for step in timeline {
-            for kill in step.guilds {
-                let current = best[kill.guild.id]
-                if current == nil || step.progress > current!.progress {
-                    best[kill.guild.id] = BestProgress(
-                        guild: kill.guild, progress: step.progress, killedAt: kill.defeatedAt,
-                        isLive: kill.streamers.count > 0
-                    )
-                }
-            }
-        }
-        return best
-    }
-
-    private struct UnrankedStanding {
-        let guild: RaceGuild
-        let bossesDown: Int
-        let lastKillAt: Date?
-        let isLive: Bool
-        let currentPull: GuildStanding.CurrentPull?
-    }
-
-    /// One ranked row per guild, using raid-rankings (raider.io's live Desktop App pull
-    /// tracking) as the source of truth for boss count and kill time — raid-race's own
-    /// `timeline` has been observed to omit guilds entirely for extended stretches of the race
-    /// (confirmed against raider.io's own public leaderboard: 9 guilds sitting at 2/8 there,
-    /// while the timeline only carried 6 guilds total across every progress level), so it can't
-    /// be trusted as the primary source anymore. The timeline is still consulted for `isLive`
-    /// (streamer status), which raid-rankings doesn't carry, and for any guild raid-rankings
-    /// itself doesn't have data for (falls back to the timeline's own, laggier count rather
-    /// than dropping the guild). Returns the full list (raid-rankings itself only ever returns
-    /// the top 50) — capping/pinning to a subset is a display concern the caller handles.
-    func standings(rankings: [RaidRankingEntry], regionSlug: String = "world") -> [GuildStanding] {
-        let timelineBest = bestProgressPerGuild(timeline(regionSlug: regionSlug))
+    /// One ranked row per tracked guild, straight from raid-rankings — raider.io's own served
+    /// `rank`, defeat counts, and per-boss first-kill timestamps.
+    ///
+    /// Deliberately NOT derived from raid-race's `timelines` (removed from `WorldFirstTracker`
+    /// entirely — see its doc comment): that array is a sample of at most 3 guilds per progress
+    /// step regardless of its own `totalGuilds` count, so a timeline-derived board is missing
+    /// most of the field and mis-ranks what's left. `streamers` (raid-race's top-level
+    /// live-stream list) supplies the accurate LIVE state instead of a sampled per-bucket
+    /// streamer count.
+    func standings(rankings: [RaidRankingEntry]) -> [GuildStanding] {
         let sortedEncounters = raid.encounters.sorted { $0.ordinal < $1.ordinal }
 
-        var byGuildId: [Int: UnrankedStanding] = [:]
-        for entry in rankings {
-            let bossesDown = entry.encountersDefeated.count
-            guard bossesDown > 0 else { continue }
-            let lastKillAt = entry.encountersDefeated.map(\.firstDefeated).max()
-            let isLive = timelineBest[entry.guild.id]?.isLive ?? false
+        // A guild with several raiders live keeps its highest-viewer stream — one badge, one
+        // tap target per guild.
+        var streamByGuildId: [Int: LiveStream] = [:]
+        for entry in streamers {
+            let candidate = LiveStream(
+                channelName: entry.stream.name, title: entry.stream.title, viewerCount: entry.stream.viewerCount
+            )
+            if let current = streamByGuildId[entry.guild.id],
+               (current.viewerCount ?? 0) >= (candidate.viewerCount ?? 0) { continue }
+            streamByGuildId[entry.guild.id] = candidate
+        }
 
-            let defeatedSlugs = Set(entry.encountersDefeated.map(\.slug))
-            let currentBoss = nextUndefeatedBoss(in: sortedEncounters, excluding: defeatedSlugs)
-            let currentPull = currentBoss.map { boss in
-                let pull = entry.encountersPulled.first { $0.slug == boss.slug && !$0.isDefeated }
-                return GuildStanding.CurrentPull(boss: boss, percent: pull?.bestPercent, pullCount: pull?.numPulls)
+        return rankings
+            .sorted { $0.rank < $1.rank }
+            .map { entry in
+                let defeatedSlugs = Set(entry.encountersDefeated.map(\.slug))
+                let currentBoss = nextUndefeatedBoss(in: sortedEncounters, excluding: defeatedSlugs)
+                let currentPull = currentBoss.map { boss in
+                    let pull = entry.encountersPulled.first { $0.slug == boss.slug && !$0.isDefeated }
+                    return GuildStanding.CurrentPull(boss: boss, percent: pull?.bestPercent, pullCount: pull?.numPulls)
+                }
+
+                return GuildStanding(
+                    guild: entry.guild, rank: entry.rank, bossesDown: entry.encountersDefeated.count,
+                    lastKillAt: entry.encountersDefeated.map(\.firstDefeated).max(),
+                    liveStream: streamByGuildId[entry.guild.id], currentPull: currentPull
+                )
             }
-
-            byGuildId[entry.guild.id] = UnrankedStanding(
-                guild: entry.guild, bossesDown: bossesDown, lastKillAt: lastKillAt, isLive: isLive,
-                currentPull: currentPull
-            )
-        }
-        for best in timelineBest.values where byGuildId[best.guild.id] == nil {
-            byGuildId[best.guild.id] = UnrankedStanding(
-                guild: best.guild, bossesDown: best.progress, lastKillAt: best.killedAt, isLive: best.isLive,
-                currentPull: nil
-            )
-        }
-
-        let sorted = byGuildId.values.sorted { lhs, rhs in
-            if lhs.bossesDown != rhs.bossesDown { return lhs.bossesDown > rhs.bossesDown }
-            switch (lhs.lastKillAt, rhs.lastKillAt) {
-            case let (l?, r?): return l < r
-            case (nil, _): return false
-            case (_, nil): return true
-            }
-        }
-        return sorted.enumerated().map { index, entry in
-            GuildStanding(
-                guild: entry.guild, rank: index + 1, bossesDown: entry.bossesDown,
-                lastKillAt: entry.lastKillAt, isLive: entry.isLive, currentPull: entry.currentPull
-            )
-        }
     }
 
     /// One group per boss with at least one kill, sourced from raid-rankings rather than the

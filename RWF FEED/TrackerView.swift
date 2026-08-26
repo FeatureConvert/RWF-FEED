@@ -93,13 +93,27 @@ struct TrackerView: View {
     @ViewBuilder
     private func standingRows(_ standings: [GuildStanding]) -> some View {
         ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
-            GuildStandingRow(
-                standing: standing,
-                totalBosses: viewModel.raid?.encounters.count ?? 8,
-                isLast: index == standings.count - 1,
-                isPinned: pinnedGuilds.isPinned(standing.guild.id),
-                onTogglePin: { pinnedGuilds.toggle(standing.guild.id) }
-            )
+            // ZStack + zero-opacity NavigationLink keeps the row pushing the guild detail
+            // screen without List's disclosure chevron changing the row layout; the LIVE
+            // badge's own Link sits above it and still wins taps on its own frame.
+            ZStack {
+                NavigationLink {
+                    GuildDetailView(
+                        standing: standing,
+                        ranking: viewModel.rankingByGuildId[standing.guild.id],
+                        encounters: viewModel.raid?.encounters ?? []
+                    )
+                } label: { EmptyView() }
+                .opacity(0)
+
+                GuildStandingRow(
+                    standing: standing,
+                    totalBosses: viewModel.raid?.encounters.count ?? 8,
+                    isLast: index == standings.count - 1,
+                    isPinned: pinnedGuilds.isPinned(standing.guild.id),
+                    onTogglePin: { pinnedGuilds.toggle(standing.guild.id) }
+                )
+            }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
@@ -162,6 +176,13 @@ struct GuildStandingRow: View {
                             Text(standing.guild.displayName)
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(Theme.textPrimary)
+                            // Purely visual here — kept inside the grouped/ignored HStack below
+                            // like every other decorative element in this row. The actual tap
+                            // target lives outside that group, next to the pin button, so it
+                            // stays independently reachable under VoiceOver (a Link nested
+                            // inside an .accessibilityElement(children: .ignore) subtree is
+                            // otherwise unreachable — same reasoning as the pin button already
+                            // being a sibling of the group, not a child).
                             if standing.isLive {
                                 LiveBadge()
                             }
@@ -195,6 +216,18 @@ struct GuildStandingRow: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(accessibilitySummary)
+
+                if let stream = standing.liveStream, let url = stream.twitchURL {
+                    Link(destination: url) {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Watch \(standing.guild.displayName)'s live stream")
+                }
 
                 Button(action: onTogglePin) {
                     Image(systemName: isPinned ? "star.fill" : "star")
