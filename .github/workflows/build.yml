@@ -1,0 +1,39 @@
+# Compile check for every PR and push to main — this repo's Claude-driven remote sessions
+# run on Linux and can review Swift but not build it, so this is the only automated gate
+# that actually catches compile errors before merge.
+#
+# Target-based build (-target, not -scheme) because no shared scheme is committed — Xcode's
+# auto-generated schemes live in xcuserdata, which is gitignored. Building the app target
+# pulls in the widget/watch targets through the embed dependency chain, so all four targets
+# compile from this one invocation. Signing is disabled outright: a compile check needs no
+# provisioning, and runners have no signing identities anyway.
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # macos-latest ships several Xcodes; default isn't always the newest. The project's
+      # deployment target tracks current iOS, so pick the highest installed — and print the
+      # list first, so a "SDK too old" failure shows exactly what was available (pin the
+      # runner image or an explicit Xcode path here if that ever happens).
+      - name: Select newest installed Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -n 1)/Contents/Developer"
+          xcodebuild -version
+
+      - name: Build all targets
+        run: |
+          xcodebuild build \
+            -project "RWF FEED.xcodeproj" \
+            -target "RWF FEED" \
+            CODE_SIGNING_ALLOWED=NO
