@@ -41,7 +41,7 @@ struct SmallBossView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8)")
+                Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? RaidConstants.bossCount)")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(WidgetTheme.textSecondary)
                 Spacer()
@@ -76,7 +76,7 @@ struct MediumBossView: View {
                 BossIcon(data: boss?.iconData, size: 40)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8)")
+                    Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? RaidConstants.bossCount)")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(WidgetTheme.textSecondary)
                     Text(boss?.bossName ?? "—")
@@ -118,7 +118,7 @@ struct MediumBossView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(WidgetTheme.textPrimary)
                                 .lineLimit(1)
-                            Text("\(standing.bossesDown)/\(boss?.totalBosses ?? 8) M")
+                            Text("\(standing.bossesDown)/\(boss?.totalBosses ?? RaidConstants.bossCount) M")
                                 .font(.system(size: 11))
                                 .foregroundStyle(WidgetTheme.textSecondary)
                                 .monospacedDigit()
@@ -143,7 +143,7 @@ struct LargeBossView: View {
             HStack(spacing: 10) {
                 BossIcon(data: boss?.iconData, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8) · LEADER'S NEXT")
+                    Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? RaidConstants.bossCount) · LEADER'S NEXT")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(WidgetTheme.textSecondary)
                     Text(boss?.bossName ?? "—")
@@ -191,7 +191,7 @@ struct LargeBossView: View {
                                 .foregroundStyle(WidgetTheme.textPrimary)
                                 .lineLimit(1)
                             Spacer(minLength: 4)
-                            Text("\(standing.bossesDown)/\(boss?.totalBosses ?? 8) M")
+                            Text("\(standing.bossesDown)/\(boss?.totalBosses ?? RaidConstants.bossCount) M")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(WidgetTheme.textSecondary)
                                 .monospacedDigit()

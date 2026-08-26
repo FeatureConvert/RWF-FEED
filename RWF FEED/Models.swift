@@ -7,6 +7,13 @@
 
 import Foundation
 
+/// The Venomous Abyss's real boss count — used only as a fallback when `raid.encounters` hasn't
+/// loaded yet (a fresh launch, or a failed refresh), never as a substitute for the real count
+/// once it's known. A new raid tier needs this updated alongside RaiderIOService.raidSlug.
+enum RaidConstants {
+    static let bossCount = 8
+}
+
 // MARK: - Feed (live coverage thread)
 
 struct ThreadListResponse: Decodable {

@@ -108,7 +108,7 @@ struct TrackerView: View {
 
                 GuildStandingRow(
                     standing: standing,
-                    totalBosses: viewModel.raid?.encounters.count ?? 8,
+                    totalBosses: viewModel.raid?.encounters.count ?? RaidConstants.bossCount,
                     isLast: index == standings.count - 1,
                     isPinned: pinnedGuilds.isPinned(standing.guild.id),
                     onTogglePin: { pinnedGuilds.toggle(standing.guild.id) }

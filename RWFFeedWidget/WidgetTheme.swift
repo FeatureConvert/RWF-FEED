@@ -41,3 +41,10 @@ extension Int {
     /// same name (widget extensions build independently; see WidgetData.swift's header comment).
     var pullsLabel: String { self == 1 ? "\(self) pull" : "\(self) pulls" }
 }
+
+/// The Venomous Abyss's real boss count — this target's own copy of RWF FEED's Models.swift
+/// RaidConstants.bossCount, used only as a fallback when a widget entry hasn't loaded live
+/// totalBosses yet.
+enum RaidConstants {
+    static let bossCount = 8
+}

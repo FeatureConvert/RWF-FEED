@@ -13,6 +13,10 @@ import SwiftUI
 
 private let rwfAccent = Color(red: Double(0x91) / 255, green: Double(0x84) / 255, blue: Double(0xD9) / 255)
 
+/// The Venomous Abyss's real boss count — this target's own copy of RWF FEED's Models.swift
+/// RaidConstants.bossCount, used only as a fallback before a complication has loaded live data.
+private let raidBossCount = 8
+
 struct ComplicationEntryView: View {
     @Environment(\.widgetFamily) private var family
     let entry: ComplicationEntry
@@ -90,7 +94,7 @@ struct CircularComplication: View {
             Text("\(boss?.bossOrdinal ?? 0)")
         } currentValueLabel: {
             VStack(spacing: 0) {
-                Text("\(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8)")
+                Text("\(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? raidBossCount)")
                     .font(.system(size: 11, weight: .semibold))
                 Text(percentText(boss?.bestPercent))
                     .font(.system(size: 11))
@@ -106,7 +110,7 @@ struct RectangularComplication: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? 8)")
+            Text("BOSS \(boss?.bossOrdinal ?? 0)/\(boss?.totalBosses ?? raidBossCount)")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
             Text(boss?.bossName ?? "Azeroth Watch")
