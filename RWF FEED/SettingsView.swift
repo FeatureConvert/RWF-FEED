@@ -279,7 +279,9 @@ struct SettingsView: View {
                     liveActivityErrorMessage = "The race hasn't started yet — check back once guilds are pulling."
                     return
                 }
-                liveActivity.start(content: content)
+                if !liveActivity.start(content: content) {
+                    liveActivityErrorMessage = "Couldn't start Live Activity — check that Live Activities are allowed for this app in Settings."
+                }
             } catch {
                 liveActivityErrorMessage = "Couldn't reach raider.io. Try again in a moment."
             }

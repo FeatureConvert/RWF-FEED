@@ -181,7 +181,8 @@ enum RWFWidgetData {
             URLQueryItem(name: "region", value: "world"),
             URLQueryItem(name: "difficulty", value: "mythic"),
         ]
-        let (data, _) = try await URLSession.shared.data(from: components.url!)
+        guard let url = components.url else { throw URLError(.badURL) }
+        let (data, _) = try await URLSession.shared.data(from: url)
         return try decoder.decode(RaidRaceResponse.self, from: data).worldFirstTracker.raid.encounters
     }
 
@@ -200,7 +201,8 @@ enum RWFWidgetData {
             URLQueryItem(name: "difficulty", value: "mythic"),
             URLQueryItem(name: "region", value: "world"),
         ]
-        let (data, _) = try await URLSession.shared.data(from: components.url!)
+        guard let url = components.url else { throw URLError(.badURL) }
+        let (data, _) = try await URLSession.shared.data(from: url)
         return try decoder.decode(RaidRankingsResponse.self, from: data).raidRankings
     }
 }

@@ -36,7 +36,8 @@ struct GuildAvatar: View {
     }
 
     private var colors: (background: Color, foreground: Color) {
-        Self.palette[abs(guild.id) % Self.palette.count]
+        // `abs(Int.min)` traps — .magnitude has no such hole, since it's unsigned.
+        Self.palette[Int(guild.id.magnitude % UInt(Self.palette.count))]
     }
 
     var body: some View {

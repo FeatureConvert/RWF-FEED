@@ -36,8 +36,14 @@ final class RaceLiveActivityController: ObservableObject {
         }
     }
 
-    func start(content: RaceLiveActivityAttributes.ContentState) {
-        guard Activity<RaceLiveActivityAttributes>.activities.isEmpty else { return }
+    /// Returns false when `Activity.request` itself throws (e.g. Live Activities disabled in
+    /// system Settings, or the app's hit the OS's concurrent-activity limit) — distinct from the
+    /// early-return "one's already running" case just above it, which isn't a failure. The
+    /// caller (SettingsView) surfaces false as its own alert; previously this was only ever
+    /// NSLog'd, so the Start button just silently reverted with no feedback at all.
+    @discardableResult
+    func start(content: RaceLiveActivityAttributes.ContentState) -> Bool {
+        guard Activity<RaceLiveActivityAttributes>.activities.isEmpty else { return true }
         let attributes = RaceLiveActivityAttributes(raidName: "The Venomous Abyss")
         do {
             let activity = try Activity.request(
@@ -48,8 +54,10 @@ final class RaceLiveActivityController: ObservableObject {
             isActive = true
             observePushToken(for: activity)
             observeActivityState(for: activity)
+            return true
         } catch {
             NSLog("RaceLiveActivityController: failed to start Live Activity: %@", String(describing: error))
+            return false
         }
     }
 

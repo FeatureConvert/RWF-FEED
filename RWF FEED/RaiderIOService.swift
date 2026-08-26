@@ -40,7 +40,8 @@ final class RaiderIOService {
     func fetchFeed() async throws -> [FeedPost] {
         var components = URLComponents(string: "https://raider.io/api/threads/list")!
         components.queryItems = [URLQueryItem(name: "slug", value: feedSlug)]
-        let (data, response) = try await session.data(from: components.url!)
+        guard let url = components.url else { throw RaiderIOError.badResponse }
+        let (data, response) = try await session.data(from: url)
         try Self.validate(response)
         let decoded = try decoder.decode(ThreadListResponse.self, from: data)
         return decoded.posts
@@ -55,7 +56,8 @@ final class RaiderIOService {
             URLQueryItem(name: "region", value: region),
             URLQueryItem(name: "difficulty", value: difficulty),
         ]
-        let (data, response) = try await session.data(from: components.url!)
+        guard let url = components.url else { throw RaiderIOError.badResponse }
+        let (data, response) = try await session.data(from: url)
         try Self.validate(response)
         let decoded = try decoder.decode(RaidRaceResponse.self, from: data)
         return decoded.worldFirstTracker
@@ -71,7 +73,8 @@ final class RaiderIOService {
             URLQueryItem(name: "difficulty", value: difficulty),
             URLQueryItem(name: "region", value: region),
         ]
-        let (data, response) = try await session.data(from: components.url!)
+        guard let url = components.url else { throw RaiderIOError.badResponse }
+        let (data, response) = try await session.data(from: url)
         try Self.validate(response)
         let decoded = try decoder.decode(RaidRankingsResponse.self, from: data)
         return decoded.raidRankings
@@ -88,7 +91,8 @@ final class RaiderIOService {
             URLQueryItem(name: "difficulty", value: difficulty),
             URLQueryItem(name: "region", value: region),
         ]
-        let (data, response) = try await session.data(from: components.url!)
+        guard let url = components.url else { throw RaiderIOError.badResponse }
+        let (data, response) = try await session.data(from: url)
         try Self.validate(response)
         let decoded = try decoder.decode(HallOfFameResponse.self, from: data)
         return decoded.hallOfFame.bossKills
