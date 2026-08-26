@@ -40,12 +40,26 @@ struct TrackerView: View {
                         .refreshable { await viewModel.refresh() }
                     } else {
                         List(Array(viewModel.standings.enumerated()), id: \.element.id) { index, standing in
-                            GuildStandingRow(
-                                rank: index + 1,
-                                standing: standing,
-                                totalBosses: viewModel.raid?.encounters.count ?? 8,
-                                isLast: index == viewModel.standings.count - 1
-                            )
+                            // ZStack + zero-opacity NavigationLink keeps the row pushing the
+                            // guild detail screen without List's disclosure chevron changing
+                            // the row layout; the LIVE badge's own Link sits above it and
+                            // still wins taps on its own frame.
+                            ZStack {
+                                NavigationLink {
+                                    GuildDetailView(
+                                        standing: standing,
+                                        ranking: viewModel.rankingByGuildId[standing.guild.id],
+                                        encounters: viewModel.raid?.encounters ?? []
+                                    )
+                                } label: { EmptyView() }
+                                .opacity(0)
+
+                                GuildStandingRow(
+                                    standing: standing,
+                                    totalBosses: viewModel.raid?.encounters.count ?? 8,
+                                    isLast: index == viewModel.standings.count - 1
+                                )
+                            }
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
@@ -73,7 +87,6 @@ struct TrackerView: View {
 }
 
 struct GuildStandingRow: View {
-    let rank: Int
     let standing: GuildStanding
     let totalBosses: Int
     let isLast: Bool
@@ -81,7 +94,7 @@ struct GuildStandingRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: Theme.trackerRowColumnGap) {
-                Text("\(rank)")
+                Text("\(standing.rank)")
                     .font(Theme.rankNumber)
                     .foregroundStyle(Theme.textSecondary)
                     .frame(width: 22, alignment: .leading)
@@ -93,7 +106,12 @@ struct GuildStandingRow: View {
                         Text(standing.guild.displayName)
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Theme.textPrimary)
-                        if standing.isLive {
+                        if let stream = standing.liveStream, let url = stream.twitchURL {
+                            Link(destination: url) {
+                                LiveBadge()
+                            }
+                            .buttonStyle(.plain)
+                        } else if standing.isLive {
                             LiveBadge()
                         }
                     }
@@ -121,9 +139,9 @@ struct GuildStandingRow: View {
             }
             .padding(.horizontal, Theme.trackerRowHPadding)
             .padding(.top, Theme.trackerRowVPadding)
-            .padding(.bottom, rank <= 5 && standing.currentPull != nil ? 0 : Theme.trackerRowVPadding)
+            .padding(.bottom, standing.rank <= 5 && standing.currentPull != nil ? 0 : Theme.trackerRowVPadding)
 
-            if rank <= 5, let pull = standing.currentPull {
+            if standing.rank <= 5, let pull = standing.currentPull {
                 CurrentPullRow(pull: pull)
                     .padding(.leading, Theme.trackerRowHPadding + Theme.guildLogoDiameter + Theme.trackerRowColumnGap)
                     .padding(.trailing, Theme.trackerRowHPadding)

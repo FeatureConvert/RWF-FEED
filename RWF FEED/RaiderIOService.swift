@@ -101,88 +101,6 @@ final class RaiderIOService {
     }
 }
 
-// MARK: - Deriving per-guild standings from the timeline buckets
-
-extension WorldFirstTracker {
-    private struct BestProgress {
-        let guild: RaceGuild
-        let progress: Int
-        let killedAt: Date?
-        let isLive: Bool
-    }
-
-    private func timeline(regionSlug: String) -> [ProgressStep] {
-        timelines.first(where: { $0.region.slug == regionSlug })?.timeline
-            ?? timelines.first?.timeline
-            ?? []
-    }
-
-    /// One entry per guild: the highest progress they've reached, when they got there, and
-    /// whether they're currently streaming — shared by every view below that ranks guilds.
-    private func bestProgressPerGuild(_ timeline: [ProgressStep]) -> [Int: BestProgress] {
-        var best: [Int: BestProgress] = [:]
-        for step in timeline {
-            for kill in step.guilds {
-                let current = best[kill.guild.id]
-                if current == nil || step.progress > current!.progress {
-                    best[kill.guild.id] = BestProgress(
-                        guild: kill.guild, progress: step.progress, killedAt: kill.defeatedAt,
-                        isLive: kill.streamers.count > 0
-                    )
-                }
-            }
-        }
-        return best
-    }
-
-    /// Flattens the per-boss-level `timeline` buckets into one ranked row per guild.
-    func standings(regionSlug: String = "world") -> [GuildStanding] {
-        let steps = timeline(regionSlug: regionSlug)
-        guard !steps.isEmpty else { return [] }
-
-        return bestProgressPerGuild(steps).values
-            .map { GuildStanding(guild: $0.guild, bossesDown: $0.progress, lastKillAt: $0.killedAt, isLive: $0.isLive, currentPull: nil) }
-            .sorted { lhs, rhs in
-                if lhs.bossesDown != rhs.bossesDown { return lhs.bossesDown > rhs.bossesDown }
-                switch (lhs.lastKillAt, rhs.lastKillAt) {
-                case let (l?, r?): return l < r
-                case (nil, _): return false
-                case (_, nil): return true
-                }
-            }
-    }
-
-    /// Flattens the same timeline buckets into one event per guild-kill, newest first —
-    /// a global kill feed across every guild instead of one row per guild's current standing.
-    ///
-    /// Assumes progress level N was boss N in encounter order (mythic progression in this
-    /// raid is gated, so guilds kill bosses in a fixed order) — the API only tells us a
-    /// guild reached progress N at time T, not which specific encounter that was.
-    func killFeedEvents(regionSlug: String = "world") -> [KillFeedEvent] {
-        let steps = timeline(regionSlug: regionSlug)
-        guard !steps.isEmpty else { return [] }
-        let orderedEncounters = raid.encounters.sorted { $0.ordinal < $1.ordinal }
-
-        var events: [KillFeedEvent] = []
-        for step in steps {
-            guard step.progress >= 1, step.progress <= orderedEncounters.count else { continue }
-            let boss = orderedEncounters[step.progress - 1]
-
-            // The API's array order isn't guaranteed to be chronological, so rank by
-            // defeatedAt ourselves rather than trusting array position.
-            let kills = step.guilds
-                .compactMap { kill in kill.defeatedAt.map { (kill.guild, $0) } }
-                .sorted { $0.1 < $1.1 }
-
-            for (index, entry) in kills.enumerated() {
-                events.append(KillFeedEvent(guild: entry.0, boss: boss, rank: index + 1, defeatedAt: entry.1))
-            }
-        }
-        return events.sorted { $0.defeatedAt > $1.defeatedAt }
-    }
-
-}
-
 // MARK: - Deriving the per-boss summary list from official raid rankings
 
 extension RaidInfo {
@@ -216,21 +134,75 @@ extension RaidInfo {
             .map { boss in BossSummary(boss: boss, worldFirst: worldFirstBySlug[boss.slug], bestPull: bestPullBySlug[boss.slug]) }
     }
 
-    /// For each guild, their live pull data (best %, pull count) on whichever boss comes right
-    /// after `bossesDownByGuildId`'s progress for them — keyed by guild id, and absent for a
-    /// guild that's killed every boss already or hasn't logged a pull on their next boss yet.
-    func currentPulls(bossesDownByGuildId: [Int: Int], rankings: [RaidRankingEntry]) -> [Int: GuildStanding.CurrentPull] {
-        let orderedEncounters = encounters.sorted { $0.ordinal < $1.ordinal }
+    /// One ranked row per tracked guild, straight from raid-rankings — raider.io's own
+    /// served `rank`, defeat counts, and per-boss first-kill timestamps.
+    ///
+    /// Deliberately NOT derived from raid-race's `timelines`: that array is a sample of at
+    /// most 3 guilds per progress step regardless of its own `totalGuilds` count (confirmed
+    /// against the live API — a step reporting 263 guilds listed 3), so a timeline-derived
+    /// board is missing most of the field and mis-ranks what's left. `streamers` (raid-race's
+    /// top-level live-stream list) supplies the accurate LIVE state, replacing the sampled
+    /// per-bucket streamer counts this used to rely on.
+    func standings(rankings: [RaidRankingEntry], streamers: [StreamerEntry]) -> [GuildStanding] {
+        let encounterBySlug = Dictionary(uniqueKeysWithValues: encounters.map { ($0.slug, $0) })
 
-        var result: [Int: GuildStanding.CurrentPull] = [:]
-        for entry in rankings {
-            guard let bossesDown = bossesDownByGuildId[entry.guild.id], bossesDown < orderedEncounters.count else { continue }
-            let nextBoss = orderedEncounters[bossesDown]
-            guard let pull = entry.encountersPulled.first(where: { $0.slug == nextBoss.slug && !$0.isDefeated }),
-                  let percent = pull.bestPercent, let pullCount = pull.numPulls else { continue }
-            result[entry.guild.id] = GuildStanding.CurrentPull(boss: nextBoss, percent: percent, pullCount: pullCount)
+        // A guild with several raiders live keeps its highest-viewer stream — one badge, one
+        // tap target per guild.
+        var streamByGuildId: [Int: LiveStream] = [:]
+        for entry in streamers {
+            let candidate = LiveStream(
+                channelName: entry.stream.name, title: entry.stream.title, viewerCount: entry.stream.viewerCount
+            )
+            if let current = streamByGuildId[entry.guild.id],
+               (current.viewerCount ?? 0) >= (candidate.viewerCount ?? 0) { continue }
+            streamByGuildId[entry.guild.id] = candidate
         }
-        return result
+
+        return rankings
+            .sorted { $0.rank < $1.rank }
+            .map { entry in
+                // Their lowest-ordinal boss still standing — with gated mythic progression
+                // that's the boss they're actually in the building pulling.
+                let currentPull = entry.encountersPulled
+                    .filter { !$0.isDefeated }
+                    .compactMap { pull -> GuildStanding.CurrentPull? in
+                        guard let boss = encounterBySlug[pull.slug],
+                              let percent = pull.bestPercent, let pullCount = pull.numPulls else { return nil }
+                        return GuildStanding.CurrentPull(boss: boss, percent: percent, pullCount: pullCount)
+                    }
+                    .min { $0.boss.ordinal < $1.boss.ordinal }
+
+                return GuildStanding(
+                    guild: entry.guild,
+                    rank: entry.rank,
+                    bossesDown: entry.encountersDefeated.count,
+                    lastKillAt: entry.encountersDefeated.map(\.firstDefeated).max(),
+                    liveStream: streamByGuildId[entry.guild.id],
+                    currentPull: currentPull
+                )
+            }
+    }
+
+    /// One event per tracked guild's first kill of each boss, newest first — built from
+    /// raid-rankings' per-guild `firstDefeated` timestamps, which are the authoritative kill
+    /// times (rank 1 here matches the Hall of Fame's `firstDefeatedAt` exactly). The
+    /// raid-race timeline this used to come from samples ≤3 guilds per progress step, which
+    /// both dropped most kills and handed "World First" to whichever sampled guild happened
+    /// to have the earliest timestamp in its bucket.
+    func killFeedEvents(rankings: [RaidRankingEntry]) -> [KillFeedEvent] {
+        var events: [KillFeedEvent] = []
+        for boss in encounters {
+            let kills = rankings
+                .compactMap { entry in
+                    entry.encountersDefeated.first(where: { $0.slug == boss.slug })
+                        .map { (entry.guild, $0.firstDefeated) }
+                }
+                .sorted { $0.1 < $1.1 }
+            for (index, kill) in kills.enumerated() {
+                events.append(KillFeedEvent(guild: kill.0, boss: boss, rank: index + 1, defeatedAt: kill.1))
+            }
+        }
+        return events.sorted { $0.defeatedAt > $1.defeatedAt }
     }
 
     /// Every guild's best pull on a boss they personally haven't killed yet, across the whole
