@@ -9,6 +9,12 @@
 import SwiftUI
 import WidgetKit
 
+/// "1 pull" / "3 pulls" — this target's own copy of RWF FEED's Models.swift helper of the same
+/// name (the watch app builds independently; see WatchBossData.swift's header comment).
+private extension Int {
+    var pullsLabel: String { self == 1 ? "\(self) pull" : "\(self) pulls" }
+}
+
 struct WatchContentView: View {
     @State private var boss: WatchBossState?
     @State private var isLoading = true
@@ -35,7 +41,7 @@ struct WatchContentView: View {
                             .foregroundStyle(Color.accentColor)
                     }
                     if let guild = boss.bestGuildName, let pulls = boss.pullCount {
-                        Text("\(guild) — \(pulls) pulls")
+                        Text("\(guild) — \(pulls.pullsLabel)")
                             .font(.system(size: 13))
                     }
 
@@ -86,8 +92,17 @@ struct WatchContentView: View {
         .refreshable { await refresh() }
     }
 
+    /// Bumped on every call and captured locally so a slow, earlier-started refresh (from the
+    /// background loop above) can't overwrite a faster, later-started one (e.g. a manual
+    /// pull-to-refresh that fires while the loop's own fetch is still in flight) with stale data.
+    @State private var refreshGeneration = 0
+
     private func refresh() async {
-        boss = await RWFWatchData.fetchCurrentBoss()
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        let fetched = await RWFWatchData.fetchCurrentBoss()
+        guard generation == refreshGeneration else { return }
+        boss = fetched
         isLoading = false
         WidgetCenter.shared.reloadAllTimelines()
     }
