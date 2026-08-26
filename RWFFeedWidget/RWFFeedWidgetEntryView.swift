@@ -84,7 +84,7 @@ struct MediumBossView: View {
                         .foregroundStyle(WidgetTheme.textPrimary)
                         .lineLimit(1)
                     if let guild = boss?.bestGuildName, let pulls = boss?.pullCount {
-                        Text("\(guild) · \(pulls) \(pulls == 1 ? "pull" : "pulls")")
+                        Text("\(guild) · \(pulls.pullsLabel)")
                             .font(.system(size: 12))
                             .foregroundStyle(WidgetTheme.textSecondary)
                             .lineLimit(1)
@@ -162,7 +162,7 @@ struct LargeBossView: View {
                     .foregroundStyle(WidgetTheme.accent)
                     .monospacedDigit()
                 if let guild = boss?.bestGuildName, let pulls = boss?.pullCount {
-                    Text("\(guild) — \(pulls) \(pulls == 1 ? "pull" : "pulls")")
+                    Text("\(guild) — \(pulls.pullsLabel)")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(WidgetTheme.textPrimary)
                 } else {

@@ -87,7 +87,7 @@ struct RaceLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     if let guild = context.state.bestGuildName, let pulls = context.state.pullCount {
-                        Text("\(guild) · \(pulls) \(pulls == 1 ? "pull" : "pulls")")
+                        Text("\(guild) · \(pulls.pullsLabel)")
                             .font(.system(size: 12))
                             .foregroundStyle(WidgetTheme.textSecondary)
                     } else {

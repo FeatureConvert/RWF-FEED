@@ -114,6 +114,21 @@ struct GuildStandingRow: View {
     let isPinned: Bool
     let onTogglePin: () -> Void
 
+    /// The visible label and its VoiceOver equivalent for `standing.currentPull`, computed once
+    /// so the two can't drift out of sync the way two independently-written branches could —
+    /// nil when the guild has cleared the raid or raid-rankings has no data for them at all.
+    private var currentPullLabel: (visible: String, accessible: String)? {
+        guard let currentPull = standing.currentPull else { return nil }
+        guard let percent = currentPull.percent, let pulls = currentPull.pullCount else {
+            return ("Working on \(currentPull.boss.name)", "working on \(currentPull.boss.name)")
+        }
+        let percentText = String(format: "%.2f%%", percent)
+        return (
+            "\(currentPull.boss.name) — \(percentText) remaining (\(pulls.pullsLabel))",
+            "working on \(currentPull.boss.name), \(percentText) remaining, \(pulls.pullsLabel)"
+        )
+    }
+
     /// This row packs rank + name + live status + realm/region + boss progress into one
     /// line — read one Text at a time, VoiceOver users get four-plus disconnected fragments
     /// per guild instead of a sentence. Everything except the pin button (which stays its
@@ -124,12 +139,8 @@ struct GuildStandingRow: View {
             parts.append("live now")
         }
         parts.append("\(standing.bossesDown) of \(totalBosses) bosses down")
-        if let currentBoss = standing.currentBoss {
-            if let percent = standing.currentPullPercent, let pulls = standing.currentPullCount {
-                parts.append("working on \(currentBoss.name), \(String(format: "%.2f%%", percent)) remaining, \(pulls) \(pulls == 1 ? "pull" : "pulls")")
-            } else {
-                parts.append("working on \(currentBoss.name)")
-            }
+        if let currentPullLabel {
+            parts.append(currentPullLabel.accessible)
         }
         parts.append("\(standing.guild.realm.name), \(standing.guild.region.shortName)")
         return parts.joined(separator: ", ")
@@ -158,16 +169,10 @@ struct GuildStandingRow: View {
                         Text("\(standing.guild.realm.name) · \(standing.guild.region.shortName)")
                             .font(.system(size: 12))
                             .foregroundStyle(Theme.textSecondary)
-                        if let currentBoss = standing.currentBoss {
-                            if let percent = standing.currentPullPercent, let pulls = standing.currentPullCount {
-                                Text("\(currentBoss.name) — \(String(format: "%.2f%%", percent)) remaining (\(pulls) \(pulls == 1 ? "pull" : "pulls"))")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Theme.textSecondary)
-                            } else {
-                                Text("Working on \(currentBoss.name)")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Theme.textSecondary)
-                            }
+                        if let currentPullLabel {
+                            Text(currentPullLabel.visible)
+                                .font(.system(size: 11))
+                                .foregroundStyle(Theme.textSecondary)
                         }
                     }
 

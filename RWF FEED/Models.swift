@@ -166,6 +166,17 @@ struct Encounter: Decodable, Identifiable {
 // MARK: - Derived guild standing (one row per guild in the tracker)
 
 struct GuildStanding: Identifiable {
+    /// This guild's own next boss plus, when they've recorded one, their best pull on it —
+    /// bundled as one type instead of three parallel optionals so "has a boss but no pull yet"
+    /// vs. "has a percent but somehow no boss" isn't a state callers have to rule out by hand.
+    struct CurrentPull {
+        let boss: Encounter
+        /// nil whenever they haven't recorded an active (undefeated) pull on `boss` yet,
+        /// distinct from "we don't know."
+        let percent: Double?
+        let pullCount: Int?
+    }
+
     let guild: RaceGuild
     /// Position in the full leaderboard (not the index within whatever subset of standings is
     /// actually being displayed) — pinning a guild outside the visible top 25 still needs to
@@ -174,14 +185,9 @@ struct GuildStanding: Identifiable {
     let bossesDown: Int
     let lastKillAt: Date?
     let isLive: Bool
-    /// The boss immediately after their last confirmed kill — nil once they've cleared every
-    /// boss in the raid. Only populated for guilds raid-rankings has data for; nil for the
-    /// timeline-only fallback case (see `standings(rankings:)`).
-    let currentBoss: Encounter?
-    /// This guild's own best pull percent/count on `currentBoss` — nil whenever they haven't
-    /// recorded an active (undefeated) pull on it yet, distinct from "we don't know."
-    let currentPullPercent: Double?
-    let currentPullCount: Int?
+    /// nil once they've cleared every boss in the raid, or for the timeline-only fallback case
+    /// raid-rankings has no data for at all (see `standings(rankings:)`).
+    let currentPull: CurrentPull?
 
     var id: Int { guild.id }
 }
@@ -297,6 +303,13 @@ struct BossKillVideo: Decodable {
         let seconds = total % 60
         return URL(string: "https://www.twitch.tv/videos/\(id)?t=\(hours)h\(minutes)m\(seconds)s")
     }
+}
+
+// MARK: - Pull-count pluralization (the one plural this app needs, everywhere a pull count is shown)
+
+extension Int {
+    /// "1 pull" / "3 pulls".
+    var pullsLabel: String { self == 1 ? "\(self) pull" : "\(self) pulls" }
 }
 
 // MARK: - Pull velocity (push-service's own /velocity endpoint, not raider.io)

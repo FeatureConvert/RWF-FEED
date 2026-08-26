@@ -35,3 +35,9 @@ enum WidgetTheme {
     })
     static let accent = Color(hex: "#9184D9")
 }
+
+extension Int {
+    /// "1 pull" / "3 pulls" — this target's own copy of RWF FEED's Models.swift helper of the
+    /// same name (widget extensions build independently; see WidgetData.swift's header comment).
+    var pullsLabel: String { self == 1 ? "\(self) pull" : "\(self) pulls" }
+}

@@ -86,7 +86,7 @@ struct CloseCallRow: View {
     private var accessibilitySummary: String {
         var parts = [
             "\(call.guild.displayName), \(call.boss.name)",
-            "\(String(format: "%.2f%%", call.percent)) remaining, \(call.pullCount) \(call.pullCount == 1 ? "pull" : "pulls")",
+            "\(String(format: "%.2f%%", call.percent)) remaining, \(call.pullCount.pullsLabel)",
         ]
         if let trend {
             parts.append(trend.isStalled ? "holding steady" : String(format: "%+.1f%% in the last hour", trend.percentChange))
@@ -128,7 +128,7 @@ struct CloseCallRow: View {
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(Theme.accentText)
                         .monospacedDigit()
-                    Text("\(call.pullCount) \(call.pullCount == 1 ? "pull" : "pulls")")
+                    Text(call.pullCount.pullsLabel)
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                     if let trend {

@@ -119,6 +119,15 @@ final class RaiderIOService {
     }
 }
 
+/// The boss right after the given defeated set, in raid order — not by assuming the count of
+/// defeated bosses indexes directly into `sortedEncounters`, since a guild could in principle
+/// have an out-of-order kill recorded. `sortedEncounters` must already be sorted by ordinal.
+/// Shared by `standings(rankings:)` (per-guild) and `leaderNextBossSummary(rankings:)` (the
+/// leader specifically) — the same "next boss" definition, applied at two different scopes.
+private func nextUndefeatedBoss(in sortedEncounters: [Encounter], excluding defeatedSlugs: Set<String>) -> Encounter? {
+    sortedEncounters.first { !defeatedSlugs.contains($0.slug) }
+}
+
 // MARK: - Deriving per-guild standings from the timeline buckets
 
 extension WorldFirstTracker {
@@ -158,9 +167,7 @@ extension WorldFirstTracker {
         let bossesDown: Int
         let lastKillAt: Date?
         let isLive: Bool
-        let currentBoss: Encounter?
-        let currentPullPercent: Double?
-        let currentPullCount: Int?
+        let currentPull: GuildStanding.CurrentPull?
     }
 
     /// One ranked row per guild, using raid-rankings (raider.io's live Desktop App pull
@@ -184,25 +191,22 @@ extension WorldFirstTracker {
             let lastKillAt = entry.encountersDefeated.map(\.firstDefeated).max()
             let isLive = timelineBest[entry.guild.id]?.isLive ?? false
 
-            // The boss right after their last confirmed kill, by raid order rather than by
-            // assuming `bossesDown` indexes directly into it — a guild could in principle have
-            // an out-of-order kill recorded, and this stays correct either way.
             let defeatedSlugs = Set(entry.encountersDefeated.map(\.slug))
-            let currentBoss = sortedEncounters.first { !defeatedSlugs.contains($0.slug) }
-            let currentPull = currentBoss.flatMap { boss in
-                entry.encountersPulled.first { $0.slug == boss.slug && !$0.isDefeated }
+            let currentBoss = nextUndefeatedBoss(in: sortedEncounters, excluding: defeatedSlugs)
+            let currentPull = currentBoss.map { boss in
+                let pull = entry.encountersPulled.first { $0.slug == boss.slug && !$0.isDefeated }
+                return GuildStanding.CurrentPull(boss: boss, percent: pull?.bestPercent, pullCount: pull?.numPulls)
             }
 
             byGuildId[entry.guild.id] = UnrankedStanding(
                 guild: entry.guild, bossesDown: bossesDown, lastKillAt: lastKillAt, isLive: isLive,
-                currentBoss: currentBoss, currentPullPercent: currentPull?.bestPercent,
-                currentPullCount: currentPull?.numPulls
+                currentPull: currentPull
             )
         }
         for best in timelineBest.values where byGuildId[best.guild.id] == nil {
             byGuildId[best.guild.id] = UnrankedStanding(
                 guild: best.guild, bossesDown: best.progress, lastKillAt: best.killedAt, isLive: best.isLive,
-                currentBoss: nil, currentPullPercent: nil, currentPullCount: nil
+                currentPull: nil
             )
         }
 
@@ -217,9 +221,7 @@ extension WorldFirstTracker {
         return sorted.enumerated().map { index, entry in
             GuildStanding(
                 guild: entry.guild, rank: index + 1, bossesDown: entry.bossesDown,
-                lastKillAt: entry.lastKillAt, isLive: entry.isLive,
-                currentBoss: entry.currentBoss, currentPullPercent: entry.currentPullPercent,
-                currentPullCount: entry.currentPullCount
+                lastKillAt: entry.lastKillAt, isLive: entry.isLive, currentPull: entry.currentPull
             )
         }
     }
@@ -309,7 +311,7 @@ extension RaidInfo {
         }
         let defeatedByLeader = Set(leader.encountersDefeated.map(\.slug))
         let sortedEncounters = encounters.sorted(by: { $0.ordinal < $1.ordinal })
-        guard let boss = sortedEncounters.first(where: { !defeatedByLeader.contains($0.slug) }) else {
+        guard let boss = nextUndefeatedBoss(in: sortedEncounters, excluding: defeatedByLeader) else {
             // Leader has cleared every boss — the race is over. Match what a Live Activity
             // already running gets from the server's own final push (see push-service's
             // checkLiveActivity), so starting one after the fact shows the same finale
