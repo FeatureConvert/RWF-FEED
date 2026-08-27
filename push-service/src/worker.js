@@ -75,6 +75,25 @@ const MAX_LIVE_ACTIVITIES = 50;
 const LIVE_ACTIVITY_STATE_KEY = "liveActivityState";
 const RACE_COMPLETE_KEY = "raceCompleteAnnounced";
 
+// Cloudflare retries a whole scheduled() invocation from scratch if the promise passed to
+// ctx.waitUntil() rejects. checkForNewPosts (and friends) already push to devices before
+// persisting their "seen" state, so a rejection here — even one from an unrelated sibling check
+// bundled into the same Promise.all, or a transient D1 write failure after the push already
+// went out — used to cause Cloudflare to re-run the same tick a couple minutes later, re-detect
+// the same "new" item against the not-yet-updated state, and re-push it. This repeated up to
+// Cloudflare's retry limit: identical notifications, a few minutes apart, on every device.
+// Swallowing (and logging) the error here instead means one tick's genuine failure just gets
+// picked up cleanly by the *next* naturally-scheduled tick, not by Cloudflare re-running this
+// one — which is what actually made the double/triple-push possible.
+async function runCheck(label, promise) {
+  try {
+    return await promise;
+  } catch (err) {
+    console.error(`${label} failed:`, err);
+    return { ok: false, error: String(err) };
+  }
+}
+
 export default {
   // Two independent cron triggers fire this (see wrangler.toml): "*/15 * * * *" also matches
   // every "* * * * *" tick, so Cloudflare invokes scheduled() once per matching expression —
@@ -82,10 +101,16 @@ export default {
   // the every-minute trigger.
   async scheduled(event, env, ctx) {
     if (event.cron === "*/15 * * * *") {
-      ctx.waitUntil(Promise.all([checkWowheadNews(env), prunePullVelocitySnapshots(env)]));
+      ctx.waitUntil(Promise.all([
+        runCheck("checkWowheadNews", checkWowheadNews(env)),
+        runCheck("prunePullVelocitySnapshots", prunePullVelocitySnapshots(env)),
+      ]));
       return;
     }
-    ctx.waitUntil(Promise.all([checkForNewPosts(env), checkRaiderIOEvents(env)]));
+    ctx.waitUntil(Promise.all([
+      runCheck("checkForNewPosts", checkForNewPosts(env)),
+      runCheck("checkRaiderIOEvents", checkRaiderIOEvents(env)),
+    ]));
   },
 
   async fetch(request, env) {
