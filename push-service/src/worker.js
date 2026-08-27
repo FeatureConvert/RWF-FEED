@@ -51,7 +51,11 @@ const RAID_BOSS_COUNT = 8;
 // can plausibly take, so a genuinely still-running invocation is never mistaken for a dead one.
 const STALE_CLAIM_MS = 5 * 60 * 1000;
 const LAST_SEEN_KEY = "lastSeenPostId";
+// Legacy single-JSON-blob key checkHeartbreaks used to store every (guild, boss) best percent
+// under — migrated on first run (see migrateHeartbreakBestKey) to one row per pair under
+// HEARTBREAK_BEST_PREFIX, so each new-record claim can be its own atomic UPSERT.
 const HEARTBREAK_BEST_KEY = "heartbreakBest";
+const HEARTBREAK_BEST_PREFIX = "heartbreakBest:";
 // Matches NotificationPreferences.defaultHeartbreakThresholdPercent on the client — kept as a
 // clean 5.0 so it lands on the Settings slider's 0.5-step grid rather than snapping on first touch.
 const HEARTBREAK_DEFAULT_THRESHOLD_PERCENT = 5.0;
@@ -303,11 +307,15 @@ async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
     for (const defeat of entry.encountersDefeated || []) claimedSlugs.add(defeat.slug);
   }
 
-  const bestRaw = await getCronState(env, HEARTBREAK_BEST_KEY);
-  const isFirstRun = bestRaw === null;
-  const best = isFirstRun ? {} : JSON.parse(bestRaw);
-  const nextBest = { ...best };
-  let changed = false;
+  await migrateHeartbreakBestKey(env);
+
+  // Computed once per tick, same as the old single-blob isFirstRun flag: true only for the very
+  // first invocation ever (no legacy blob to migrate, no per-(guild,boss) rows yet).
+  const initialized = await env.DB.prepare(
+    "SELECT 1 FROM cron_state WHERE key LIKE ? LIMIT 1"
+  )
+    .bind(HEARTBREAK_BEST_PREFIX + "%")
+    .first();
 
   let pushCount = 0;
   for (const entry of rankings) {
@@ -316,18 +324,38 @@ async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
       if (typeof pull.bestPercent !== "number") continue;
 
       const key = `${entry.guild.id}-${pull.slug}`;
-      const previousBest = best[key];
-      const isNewRecord = previousBest === undefined || pull.bestPercent < previousBest;
-      if (isNewRecord) {
-        nextBest[key] = pull.bestPercent;
-        changed = true;
+      const stateKey = HEARTBREAK_BEST_PREFIX + key;
+
+      if (!initialized) {
+        // First run ever: record the baseline (so re-notifying doesn't depend on someone
+        // happening to improve past a pull we never saw) without pushing for every close call
+        // already in progress the moment this ships. Record-tracking itself isn't gated by any
+        // threshold — it has to stay threshold-agnostic so it means the same thing regardless of
+        // which device's threshold ends up applying at push time below.
+        await env.DB.prepare(
+          "INSERT INTO cron_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING"
+        )
+          .bind(stateKey, String(pull.bestPercent))
+          .run();
+        continue;
       }
-      // First run ever: record the baseline (so re-notifying doesn't depend on someone
-      // happening to improve past a pull we never saw) without pushing for every close call
-      // already in progress the moment this ships. Record-tracking itself isn't gated by any
-      // threshold — it has to stay threshold-agnostic so it means the same thing regardless of
-      // which device's threshold ends up applying at push time below.
-      if (!isNewRecord || isFirstRun) continue;
+
+      // Atomic claim, not a read-then-later-write: the UPSERT's DO UPDATE only fires when this
+      // pull's bestPercent is still strictly lower than whatever's currently stored for this
+      // (guild, boss) at the moment this single statement runs, so an overlapping cron tick or a
+      // manual /check racing the cron can't both read the same "not yet recorded" state and both
+      // push. Same TOCTOU class closed for RACE_COMPLETE_KEY above (see checkRaceComplete),
+      // closed here the same way — this used to be the one spot that wasn't, and was the
+      // repeatable double/triple-send source for "Major Heartbreaker" pushes.
+      const claim = await env.DB.prepare(
+        `INSERT INTO cron_state (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value
+         WHERE CAST(cron_state.value AS REAL) > CAST(excluded.value AS REAL)`
+      )
+        .bind(stateKey, String(pull.bestPercent))
+        .run();
+
+      if (claim.meta.changes === 0) continue;
 
       const isWorldFirstRace = !claimedSlugs.has(pull.slug);
       const bossName = encounterBySlug[pull.slug]?.name ?? pull.slug;
@@ -352,10 +380,29 @@ async function checkHeartbreaks(env, rankings, encounterBySlug, devices) {
     }
   }
 
-  // This cron runs every minute; only write when a pull actually set a new record, not on
-  // every tick — see the LAST_SEEN_KEY comment above for why that matters.
-  if (changed) await setCronState(env, HEARTBREAK_BEST_KEY, JSON.stringify(nextBest));
   return { pushCount };
+}
+
+/// One-time migration off the legacy single-JSON-blob HEARTBREAK_BEST_KEY. That blob required a
+/// read-the-whole-map-then-write-it-back-later cycle to update any single (guild, boss) entry —
+/// exactly the TOCTOU gap closed for RACE_COMPLETE_KEY, but never closed here — so it's replaced
+/// with one row per (guild, boss) under HEARTBREAK_BEST_PREFIX, each updatable by its own atomic
+/// UPSERT. Safe to call every tick: once the blob is gone this is a single cheap read that finds
+/// nothing to do, and a concurrent invocation racing this same migration just re-seeds the same
+/// rows (ON CONFLICT DO NOTHING makes that a no-op).
+async function migrateHeartbreakBestKey(env) {
+  const legacyRaw = await getCronState(env, HEARTBREAK_BEST_KEY);
+  if (legacyRaw === null) return;
+
+  const legacy = JSON.parse(legacyRaw);
+  for (const [key, percent] of Object.entries(legacy)) {
+    await env.DB.prepare(
+      "INSERT INTO cron_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING"
+    )
+      .bind(HEARTBREAK_BEST_PREFIX + key, String(percent))
+      .run();
+  }
+  await env.DB.prepare("DELETE FROM cron_state WHERE key = ?").bind(HEARTBREAK_BEST_KEY).run();
 }
 
 /// "World First!" pushes — the first guild to defeat each boss, from the same

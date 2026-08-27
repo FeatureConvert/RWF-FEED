@@ -136,9 +136,15 @@ Two tables:
   `INSERT ... ON CONFLICT(token) DO UPDATE`.
 - **`cron_state`** — generic `key`/`value` table for the cron's own tracking state:
   - `lastSeenPostId` — the highest feed post ID seen so far, as a string.
-  - `heartbreakBest` — JSON object, `{ "guildId-bossSlug": lowestPercentSeen }` — the
-    record close call already pushed for each guild+boss pair, so only a new record
-    re-pushes.
+  - `heartbreakBest:guildId-bossSlug` — one row per (guild, boss) pair, value the lowest
+    percent seen so far as a string — the record close call already pushed for that pair,
+    so only a strictly new record re-pushes. Each record claim is its own atomic
+    `INSERT ... ON CONFLICT DO UPDATE ... WHERE` (only succeeds if the new percent is
+    still lower than what's stored), so an overlapping cron tick or a manual `/check`
+    racing the cron can't both win the same record and double-push. Replaces the old
+    single `heartbreakBest` JSON-blob key (migrated automatically on first run after
+    deploy — see `migrateHeartbreakBestKey` in worker.js), which required a
+    read-the-whole-map-then-write-it-back cycle that was exactly this race.
   - `worldFirstKillsSeen` — JSON object, `{ bossSlug: true }` — which bosses already had
     a World First push.
   - `wowheadLastSeenPubDate` — ISO date string, the newest Wowhead article `pubDate` seen
