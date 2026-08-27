@@ -135,7 +135,11 @@ Two tables:
   `notify_non_world_first_heartbreaks`. Upserted atomically via
   `INSERT ... ON CONFLICT(token) DO UPDATE`.
 - **`cron_state`** — generic `key`/`value` table for the cron's own tracking state:
-  - `lastSeenPostId` — the highest feed post ID seen so far, as a string.
+  - `lastSeenPostId` — the highest feed post ID seen so far, as a string. Advanced via a
+    compare-and-swap `UPDATE ... WHERE value = ?` against the exact value the pushing
+    invocation read, not a plain write, so an overlapping cron tick or a manual `/check`
+    racing the cron can't both read the same "not yet seen" value and both push the same
+    post — the loser's claim fails and it skips pushing entirely.
   - `heartbreakBest:guildId-bossSlug` — one row per (guild, boss) pair, value the lowest
     percent seen so far as a string — the record close call already pushed for that pair,
     so only a strictly new record re-pushes. Each record claim is its own atomic

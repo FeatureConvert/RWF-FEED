@@ -225,19 +225,17 @@ async function checkForNewPosts(env) {
     return { ok: true, newPosts: 0 };
   }
 
-  // This cron overlapping a manual /check could both read the same lastSeenRaw before either
-  // writes back and both push the same "new" post — apns-collapse-id only replaces a
-  // still-undelivered/undismissed notification with the same ID, so this is a latent
-  // double-send that's usually not user-visible but can be if the user's already seen and
-  // dismissed the first copy before the second arrives. Same tradeoff as the device-storage
-  // races documented near addDevice: not worth a transaction for this app's scale.
   const maxId = posts.reduce((m, p) => Math.max(m, p.id), 0);
   const lastSeenRaw = await getCronState(env, LAST_SEEN_KEY);
 
   if (lastSeenRaw === null) {
-    // First run ever: just record the baseline so we don't blast a notification for
-    // every post already in the feed's backlog.
-    await setCronState(env, LAST_SEEN_KEY, String(maxId));
+    // First run ever: just record the baseline so we don't blast a notification for every post
+    // already in the feed's backlog. ON CONFLICT DO NOTHING rather than an unconditional write
+    // so a concurrent first run (cron racing a manual /check) can't both think they're the one
+    // setting the baseline and both fall through to treating some later tick's posts as new.
+    await env.DB.prepare("INSERT INTO cron_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING")
+      .bind(LAST_SEEN_KEY, String(maxId))
+      .run();
     return { ok: true, newPosts: 0, baseline: maxId };
   }
 
@@ -247,6 +245,21 @@ async function checkForNewPosts(env) {
     .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
 
   if (newPosts.length > 0) {
+    // Compare-and-swap claim, not a read-then-later-write: this cron overlapping a manual
+    // /check (or two overlapping cron ticks) could otherwise both read the same lastSeenRaw
+    // above before either writes back, and both push the same "new" post — apns-collapse-id
+    // only replaces a still-undelivered/undismissed notification with the same ID, so a user
+    // who already saw and dismissed the first copy gets a second one. The UPDATE below only
+    // succeeds if `value` still matches the exact lastSeenRaw this invocation read, so only one
+    // concurrent invocation can ever win the claim for a given lastSeen; the loser skips pushing
+    // entirely, since the winner is (or already has) pushed for these same posts. Same TOCTOU
+    // class closed for RACE_COMPLETE_KEY and HEARTBREAK_BEST_KEY — this was the one spot left
+    // that wasn't, and matches a "Venomous Abyss" feed post landing on the device more than once.
+    const claim = await env.DB.prepare("UPDATE cron_state SET value = ? WHERE key = ? AND value = ?")
+      .bind(String(maxId), LAST_SEEN_KEY, lastSeenRaw)
+      .run();
+    if (claim.meta.changes === 0) return { ok: true, newPosts: 0, skipped: "claim lost" };
+
     const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
     for (const post of newPosts) {
       const title = "Venomous Abyss";
@@ -263,12 +276,6 @@ async function checkForNewPosts(env) {
         await sendPush(env, device.token, title, device.spoilerFreeEnabled ? spoilerFreeBody : body, `post-${post.id}`, "feed");
       }
     }
-    // Only write when maxId actually advanced — this cron runs every minute, and writing
-    // unconditionally on a KV-backed version of this (before the D1 migration below) burned
-    // ~1440 writes/day from this function alone toward KV's 1000/day free-tier cap, even on
-    // minutes with nothing new. D1's free tier is 100k writes/day, but there's no reason to
-    // reintroduce the churn.
-    await setCronState(env, LAST_SEEN_KEY, String(maxId));
   }
   return { ok: true, newPosts: newPosts.length };
 }
