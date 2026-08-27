@@ -11,21 +11,25 @@ Deployed at: `https://rwf-feed-push.rwf-feed.workers.dev`
 
 ## How it works
 
-Each registered device carries five independent preferences — `raiderioEnabled`,
-`wowheadEnabled`, `spoilerFreeEnabled`, `heartbreakThresholdPercent`, and
-`notifyNonWorldFirstHeartbreaks` — set from Settings, filtering/redacting/thresholding
-server-side (there's no way to veto or rewrite a push client-side once APNs has
-delivered it while the app is closed). There's no per-guild filtering within
-`raiderioEnabled` (tried and removed; the favorited-guild push never fired reliably
-enough to be worth the complexity) — it's an all-or-nothing category, same as
-`wowheadEnabled`.
+Each registered device carries seven independent preferences — `feedPostsEnabled`,
+`majorHeartbreakerEnabled`, `worldFirstKillEnabled`, `wowheadEnabled`,
+`spoilerFreeEnabled`, `heartbreakThresholdPercent`, and `notifyNonWorldFirstHeartbreaks`
+— set from Settings, filtering/redacting/thresholding server-side (there's no way to
+veto or rewrite a push client-side once APNs has delivered it while the app is closed).
+The first three used to be one combined `raiderioEnabled` toggle; they're now
+independently switchable so a device can e.g. follow World First kills without the
+chattier Heartbreak close-call pushes (existing devices keep whatever the combined
+toggle was set to for all three — see `migrations/002_split_raiderio_enabled.sql`).
+There's no per-guild filtering within any of them (tried and removed; the
+favorited-guild push never fired reliably enough to be worth the complexity) — each is
+an all-or-nothing category, same as `wowheadEnabled`.
 
 - **Cron** (`* * * * *`, every minute): runs `checkForNewPosts` and `checkRaiderIOEvents`
   below. A second cron (`*/15 * * * *`) runs `checkWowheadNews` on its own slower cadence;
   `scheduled()` routes on `event.cron` since both triggers fire the handler and the
   15-minute one also matches every 1-minute tick.
 - **`checkForNewPosts`**: fetches the coverage feed, diffs against `lastSeenPostId` in
-  D1, and pushes anything newer to every `raiderioEnabled` device. Coverage posts
+  D1, and pushes anything newer to every `feedPostsEnabled` device. Coverage posts
   routinely announce kills in the first sentence, so `spoilerFreeEnabled` devices get a
   generic body here too, not just on `checkWorldFirstKills` pushes.
 - **`checkRaiderIOEvents`**: fetches raid-race (boss names) and raid-rankings (live
@@ -37,12 +41,13 @@ enough to be worth the complexity) — it's an all-or-nothing category, same as
     `heartbreakThresholdPercent` (default `HEARTBREAK_DEFAULT_THRESHOLD_PERCENT`, 5.01%)
     and `notifyNonWorldFirstHeartbreaks` (default off — only reach devices that opted in
     for a close call on a boss another guild already claimed) independently at push
-    time, since two devices can disagree on both.
+    time, since two devices can disagree on both. Only reaches `majorHeartbreakerEnabled`
+    devices.
   - **`checkWorldFirstKills`**: "World First!" pushes — the first guild to defeat each
     boss, tracked in `worldFirstKillsSeen` in D1 so each boss only pushes once. For
     `spoilerFreeEnabled` devices, the guild/boss are redacted to a generic "Spoiler
-    Alert" body instead of naming them.
-  - Both only reach `raiderioEnabled` devices.
+    Alert" body instead of naming them. Only reaches `worldFirstKillEnabled` devices,
+    same as the one-time `checkRaceComplete` push once the whole raid is cleared.
   - All three of the above only write to D1 when the tracked value actually changes
     (a real new post, a genuine new heartbreak record, a new World First claim) — not
     unconditionally on every cron tick.
@@ -52,10 +57,12 @@ enough to be worth the complexity) — it's an all-or-nothing category, same as
   article title) to every `wowheadEnabled` device.
 - **`POST /register`**: the app calls this after `registerForRemoteNotifications()`
   succeeds, and again whenever a Settings toggle/slider changes, with
-  `{ "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool, "spoilerFreeEnabled": bool, "heartbreakThresholdPercent": number, "notifyNonWorldFirstHeartbreaks": bool }`.
-  Upserts by token — a device that re-registers gets its existing entry's preferences
-  updated, not a duplicate. A `BadDeviceToken`/410 response from APNs on send removes
-  the device automatically (e.g. after a reinstall).
+  `{ "deviceToken": "<hex>", "feedPostsEnabled": bool, "majorHeartbreakerEnabled": bool, "worldFirstKillEnabled": bool, "wowheadEnabled": bool, "spoilerFreeEnabled": bool, "heartbreakThresholdPercent": number, "notifyNonWorldFirstHeartbreaks": bool }`.
+  Also still accepts a legacy `raiderioEnabled` bool as a fallback for any of the first
+  three fields a pre-split app build doesn't send. Upserts by token — a device that
+  re-registers gets its existing entry's preferences updated, not a duplicate. A
+  `BadDeviceToken`/410 response from APNs on send removes the device automatically
+  (e.g. after a reinstall).
 - **`POST /live-activity/register`** / **`POST /live-activity/unregister`**: `{ "pushToken": "<hex>" }`.
   Registers/removes a Live Activity's own ActivityKit push token (separate from a device's
   regular APNs token from `/register` above), so `checkLiveActivity` can push content updates
@@ -130,8 +137,9 @@ writes/day, ~100x the headroom, for $0/month.
 
 Two tables:
 
-- **`devices`** — one row per device: `token` (primary key), `raiderio_enabled`,
-  `wowhead_enabled`, `spoiler_free_enabled`, `heartbreak_threshold_percent`,
+- **`devices`** — one row per device: `token` (primary key), `feed_posts_enabled`,
+  `major_heartbreaker_enabled`, `world_first_kill_enabled`, `wowhead_enabled`,
+  `spoiler_free_enabled`, `heartbreak_threshold_percent`,
   `notify_non_world_first_heartbreaks`. Upserted atomically via
   `INSERT ... ON CONFLICT(token) DO UPDATE`.
 - **`cron_state`** — generic `key`/`value` table for the cron's own tracking state:

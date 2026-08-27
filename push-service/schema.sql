@@ -3,7 +3,11 @@ CREATE TABLE IF NOT EXISTS devices (
   -- depth against the same shape ever landing in the table again by some path other than
   -- /register, not a replacement for that endpoint's own validation.
   token TEXT PRIMARY KEY CHECK (length(token) = 64 AND token NOT GLOB '*[^0-9a-fA-F]*'),
-  raiderio_enabled INTEGER NOT NULL DEFAULT 1,
+  -- Split from a single raiderio_enabled column (see migrations/002) so each Raider.IO-sourced
+  -- push category is independently toggleable from Settings.
+  feed_posts_enabled INTEGER NOT NULL DEFAULT 1,
+  major_heartbreaker_enabled INTEGER NOT NULL DEFAULT 1,
+  world_first_kill_enabled INTEGER NOT NULL DEFAULT 1,
   wowhead_enabled INTEGER NOT NULL DEFAULT 1,
   spoiler_free_enabled INTEGER NOT NULL DEFAULT 0,
   heartbreak_threshold_percent REAL NOT NULL DEFAULT 5.0,

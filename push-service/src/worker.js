@@ -3,24 +3,33 @@
 // the moment something new appears. This is what lets RWF FEED notify you even while the app
 // is fully closed — local notifications only fire while the app's own polling loop is running.
 //
-// Each registered device carries five independent preferences, set from Settings —
-// raiderioEnabled (new feed posts, "Major Heartbreaker" close calls, "World First!" kill
-// announcements), wowheadEnabled (new WoW news articles), spoilerFreeEnabled (redacts both
-// World First kill pushes and new-post pushes to a generic body instead of naming/previewing
-// what happened — coverage posts routinely announce kills in the first sentence, so both had
-// to be covered or the feature didn't deliver what enabling it implies; off by default),
-// heartbreakThresholdPercent (how close a pull has to be to push, default
-// HEARTBREAK_DEFAULT_THRESHOLD_PERCENT), and notifyNonWorldFirstHeartbreaks (also push for a
-// guild's close call on a boss another guild already claimed, not just genuine title-race
-// close calls; off by default — matches the Heartbreak tab's own per-guild scope when on).
-// Filtering/redaction has to happen here rather than on-device: once APNs has delivered a
-// push while the app is closed, there's no client-side hook to veto or rewrite it. There's no
-// per-guild filtering within raiderioEnabled (removed; it wasn't working reliably).
+// Each registered device carries seven independent preferences, set from Settings —
+// feedPostsEnabled (new feed posts), majorHeartbreakerEnabled ("Major Heartbreaker" close
+// calls), worldFirstKillEnabled ("World First!" kill announcements, including the one-time
+// "Race Complete" push) — split out from a single combined "Raider.IO Updates" toggle so a
+// device can follow e.g. World First kills without the chattier Heartbreak close-call pushes —
+// wowheadEnabled (new WoW news articles), spoilerFreeEnabled (redacts both World First kill
+// pushes and new-post pushes to a generic body instead of naming/previewing what happened —
+// coverage posts routinely announce kills in the first sentence, so both had to be covered or
+// the feature didn't deliver what enabling it implies; off by default), heartbreakThresholdPercent
+// (how close a pull has to be to push, default HEARTBREAK_DEFAULT_THRESHOLD_PERCENT), and
+// notifyNonWorldFirstHeartbreaks (also push for a guild's close call on a boss another guild
+// already claimed, not just genuine title-race close calls; off by default — matches the
+// Heartbreak tab's own per-guild scope when on). Filtering/redaction has to happen here rather
+// than on-device: once APNs has delivered a push while the app is closed, there's no
+// client-side hook to veto or rewrite it. There's no per-guild filtering within these
+// (removed; it wasn't working reliably).
 //
 // Endpoints:
-//   POST /register  { "deviceToken": "<hex>", "raiderioEnabled": bool, "wowheadEnabled": bool,
-//                      "spoilerFreeEnabled": bool, "heartbreakThresholdPercent": number,
+//   POST /register  { "deviceToken": "<hex>", "feedPostsEnabled": bool,
+//                      "majorHeartbreakerEnabled": bool, "worldFirstKillEnabled": bool,
+//                      "wowheadEnabled": bool, "spoilerFreeEnabled": bool,
+//                      "heartbreakThresholdPercent": number,
 //                      "notifyNonWorldFirstHeartbreaks": bool }
+//                    Also still accepts a legacy "raiderioEnabled" bool (pre-split app builds)
+//                    as a fallback for any of the three new fields that aren't present in the
+//                    body, so an app update and a Worker deploy landing out of order doesn't
+//                    silently re-enable/disable a device's actual preference.
 //   POST /live-activity/register  { "pushToken": "<hex>" } — registers a Live Activity's own
 //        ActivityKit push token (separate from a device's regular APNs token above), so
 //        checkLiveActivity can push content updates as the leader's frontier boss changes.
@@ -121,8 +130,15 @@ export default {
       if (!body || typeof body.deviceToken !== "string" || !DEVICE_TOKEN_PATTERN.test(body.deviceToken)) {
         return new Response("Invalid deviceToken", { status: 400 });
       }
+      // Pre-split app builds only ever sent "raiderioEnabled" — fall back to it for whichever
+      // of the three new fields the body doesn't carry, so a client that hasn't updated yet
+      // (or a Worker deploy that lands before the client update) doesn't get silently defaulted
+      // to "on" for fields it never actually expressed an opinion on.
+      const legacyRaiderioEnabled = typeof body.raiderioEnabled === "boolean" ? body.raiderioEnabled : undefined;
       const added = await addDevice(env, body.deviceToken, {
-        raiderioEnabled: body.raiderioEnabled,
+        feedPostsEnabled: body.feedPostsEnabled ?? legacyRaiderioEnabled,
+        majorHeartbreakerEnabled: body.majorHeartbreakerEnabled ?? legacyRaiderioEnabled,
+        worldFirstKillEnabled: body.worldFirstKillEnabled ?? legacyRaiderioEnabled,
         wowheadEnabled: body.wowheadEnabled,
         spoilerFreeEnabled: body.spoilerFreeEnabled,
         heartbreakThresholdPercent: body.heartbreakThresholdPercent,
@@ -247,7 +263,7 @@ async function checkForNewPosts(env) {
     .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
 
   if (newPosts.length > 0) {
-    const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
+    const devices = (await getDevices(env)).filter((d) => d.feedPostsEnabled);
     for (const post of newPosts) {
       const title = "Venomous Abyss";
       // Coverage posts routinely announce kills in the first sentence ("Method one-shots
@@ -277,13 +293,20 @@ async function checkForNewPosts(env) {
 /// runs both the heartbreak and world-first checks against it — they'd otherwise each need
 /// the same two fetches every minute.
 async function checkRaiderIOEvents(env) {
-  const devices = (await getDevices(env)).filter((d) => d.raiderioEnabled);
+  const allDevices = await getDevices(env);
+  // Heartbreak and World-First/Race-Complete are independently toggleable now (previously one
+  // combined raiderioEnabled flag gated all of them), so each gets its own filtered device list
+  // rather than sharing a single pre-filtered one.
+  const heartbreakDevices = allDevices.filter((d) => d.majorHeartbreakerEnabled);
+  const worldFirstDevices = allDevices.filter((d) => d.worldFirstKillEnabled);
   const liveActivityTokens = await getLiveActivityTokens(env);
   // Live Activities are a separate registry from push devices — someone could in principle
-  // have one running without any raiderioEnabled device (unlikely in practice, since app
-  // launch always tries to register a device token too, but cheap to handle correctly rather
-  // than silently skipping their updates).
-  if (devices.length === 0 && liveActivityTokens.length === 0) return { ok: true, watchedDevices: 0 };
+  // have one running without any subscribed device (unlikely in practice, since app launch
+  // always tries to register a device token too, but cheap to handle correctly rather than
+  // silently skipping their updates).
+  if (heartbreakDevices.length === 0 && worldFirstDevices.length === 0 && liveActivityTokens.length === 0) {
+    return { ok: true, watchedDevices: 0 };
+  }
 
   const [raceResp, rankResp] = await Promise.all([
     fetch(`https://raider.io/api/raids/raid-race?raid=${RAID_SLUG}&region=world&difficulty=mythic`),
@@ -302,16 +325,26 @@ async function checkRaiderIOEvents(env) {
   const rankings = rankData.raidRankings || [];
 
   const [heartbreaks, worldFirsts, liveActivity, raceComplete] = await Promise.all([
-    checkHeartbreaks(env, rankings, encounterBySlug, devices),
-    checkWorldFirstKills(env, rankings, encounterBySlug, devices),
+    checkHeartbreaks(env, rankings, encounterBySlug, heartbreakDevices),
+    checkWorldFirstKills(env, rankings, encounterBySlug, worldFirstDevices),
     checkLiveActivity(env, rankings, encounterBySlug, liveActivityTokens),
-    checkRaceComplete(env, rankings, encounterBySlug, devices),
+    // Race Complete is the same "World First" category as the per-boss kill push above (both
+    // tagged "bosses" for deep-linking, both about the title race), so it shares that toggle
+    // rather than getting a fourth Settings entry of its own.
+    checkRaceComplete(env, rankings, encounterBySlug, worldFirstDevices),
   ]);
   // Not part of the Promise.all above deliberately — a slow/failed snapshot write shouldn't be
   // able to delay or fail the push-notification-critical checks it's racing alongside.
   await snapshotPullVelocity(env, rankings).catch(() => {});
 
-  return { ok: true, watchedDevices: devices.length, heartbreaks, worldFirsts, liveActivity, raceComplete };
+  return {
+    ok: true,
+    watchedDevices: allDevices.length,
+    heartbreaks,
+    worldFirsts,
+    liveActivity,
+    raceComplete,
+  };
 }
 
 /// "Major Heartbreaker" pushes: a guild pulling a boss down to a new-record-low remaining
@@ -1030,11 +1063,11 @@ async function setCronState(env, key, value) {
 }
 
 // ---- Device storage (D1 `devices` table) ----
-// One row per device: token, raiderioEnabled, wowheadEnabled, spoilerFreeEnabled,
-// heartbreakThresholdPercent, notifyNonWorldFirstHeartbreaks. Per-guild notification filtering
-// (a `guildIds` field per device) was tried and removed — it didn't work reliably; these are
-// much simpler independent per-category/per-value preferences, not guild-matching logic, so
-// the same concern doesn't really apply.
+// One row per device: token, feedPostsEnabled, majorHeartbreakerEnabled, worldFirstKillEnabled,
+// wowheadEnabled, spoilerFreeEnabled, heartbreakThresholdPercent, notifyNonWorldFirstHeartbreaks.
+// Per-guild notification filtering (a `guildIds` field per device) was tried and removed — it
+// didn't work reliably; these are much simpler independent per-category/per-value preferences,
+// not guild-matching logic, so the same concern doesn't really apply.
 //
 // Updating an already-registered device is a single atomic UPSERT (D1/SQLite gives us
 // INSERT...ON CONFLICT, unlike KV's old read-modify-write-a-shared-blob approach, which could
@@ -1050,7 +1083,9 @@ function normalizeDevice(d) {
       : HEARTBREAK_DEFAULT_THRESHOLD_PERCENT;
   return {
     token: d.token,
-    raiderioEnabled: d.raiderioEnabled !== false,
+    feedPostsEnabled: d.feedPostsEnabled !== false,
+    majorHeartbreakerEnabled: d.majorHeartbreakerEnabled !== false,
+    worldFirstKillEnabled: d.worldFirstKillEnabled !== false,
     wowheadEnabled: d.wowheadEnabled !== false,
     spoilerFreeEnabled: d.spoilerFreeEnabled === true,
     heartbreakThresholdPercent: threshold,
@@ -1061,7 +1096,9 @@ function normalizeDevice(d) {
 function rowToDevice(row) {
   return normalizeDevice({
     token: row.token,
-    raiderioEnabled: row.raiderio_enabled === 1,
+    feedPostsEnabled: row.feed_posts_enabled === 1,
+    majorHeartbreakerEnabled: row.major_heartbreaker_enabled === 1,
+    worldFirstKillEnabled: row.world_first_kill_enabled === 1,
     wowheadEnabled: row.wowhead_enabled === 1,
     spoilerFreeEnabled: row.spoiler_free_enabled === 1,
     heartbreakThresholdPercent: row.heartbreak_threshold_percent,
@@ -1086,10 +1123,12 @@ async function addDevice(env, token, prefs) {
   }
   await env.DB.prepare(
     `INSERT INTO devices
-       (token, raiderio_enabled, wowhead_enabled, spoiler_free_enabled, heartbreak_threshold_percent, notify_non_world_first_heartbreaks)
-     VALUES (?, ?, ?, ?, ?, ?)
+       (token, feed_posts_enabled, major_heartbreaker_enabled, world_first_kill_enabled, wowhead_enabled, spoiler_free_enabled, heartbreak_threshold_percent, notify_non_world_first_heartbreaks)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(token) DO UPDATE SET
-       raiderio_enabled = excluded.raiderio_enabled,
+       feed_posts_enabled = excluded.feed_posts_enabled,
+       major_heartbreaker_enabled = excluded.major_heartbreaker_enabled,
+       world_first_kill_enabled = excluded.world_first_kill_enabled,
        wowhead_enabled = excluded.wowhead_enabled,
        spoiler_free_enabled = excluded.spoiler_free_enabled,
        heartbreak_threshold_percent = excluded.heartbreak_threshold_percent,
@@ -1097,7 +1136,9 @@ async function addDevice(env, token, prefs) {
   )
     .bind(
       normalized.token,
-      normalized.raiderioEnabled ? 1 : 0,
+      normalized.feedPostsEnabled ? 1 : 0,
+      normalized.majorHeartbreakerEnabled ? 1 : 0,
+      normalized.worldFirstKillEnabled ? 1 : 0,
       normalized.wowheadEnabled ? 1 : 0,
       normalized.spoilerFreeEnabled ? 1 : 0,
       normalized.heartbreakThresholdPercent,

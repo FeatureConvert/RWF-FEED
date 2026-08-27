@@ -15,7 +15,9 @@ enum PushRegistration {
 
     private struct RegisterPayload: Encodable {
         let deviceToken: String
-        let raiderioEnabled: Bool
+        let feedPostsEnabled: Bool
+        let majorHeartbreakerEnabled: Bool
+        let worldFirstKillEnabled: Bool
         let wowheadEnabled: Bool
         let spoilerFreeEnabled: Bool
         let heartbreakThresholdPercent: Double
@@ -42,7 +44,9 @@ enum PushRegistration {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let payload = RegisterPayload(
             deviceToken: tokenHex,
-            raiderioEnabled: NotificationPreferences.shared.raiderioEnabled,
+            feedPostsEnabled: NotificationPreferences.shared.feedPostsEnabled,
+            majorHeartbreakerEnabled: NotificationPreferences.shared.majorHeartbreakerEnabled,
+            worldFirstKillEnabled: NotificationPreferences.shared.worldFirstKillEnabled,
             wowheadEnabled: NotificationPreferences.shared.wowheadEnabled,
             spoilerFreeEnabled: NotificationPreferences.shared.spoilerFreeEnabled,
             heartbreakThresholdPercent: NotificationPreferences.shared.heartbreakThresholdPercent,

@@ -109,8 +109,18 @@ struct SettingsView: View {
                 .listRowBackground(Theme.cardSurface)
 
                 Section {
-                    Toggle(isOn: $notificationPreferences.raiderioEnabled) {
-                        Label("Raider.IO Updates", systemImage: "bolt.fill")
+                    Toggle(isOn: $notificationPreferences.feedPostsEnabled) {
+                        Label("New Feed Posts", systemImage: "bolt.fill")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                    Toggle(isOn: $notificationPreferences.majorHeartbreakerEnabled) {
+                        Label("Major Heartbreaker", systemImage: "heart.slash.fill")
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .tint(Theme.accent)
+                    Toggle(isOn: $notificationPreferences.worldFirstKillEnabled) {
+                        Label("World First Kills", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(Theme.textPrimary)
                     }
                     .tint(Theme.accent)
@@ -128,7 +138,7 @@ struct SettingsView: View {
                     Text("Notifications")
                         .foregroundStyle(Theme.textSecondary)
                 } footer: {
-                    Text("Raider.IO Updates covers new feed posts, Major Heartbreaker close-call alerts, and World First kill announcements. Spoiler-Free Mode hides which guild/boss in World First pushes — you'll still be alerted, just as \"Spoiler Alert\" instead.")
+                    Text("New Feed Posts, Major Heartbreaker close-call alerts, and World First kill announcements can each be toggled independently. Spoiler-Free Mode hides which guild/boss in World First pushes — you'll still be alerted, just as \"Spoiler Alert\" instead.")
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .listRowBackground(Theme.cardSurface)

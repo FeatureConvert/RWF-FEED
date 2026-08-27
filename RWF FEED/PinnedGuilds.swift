@@ -4,7 +4,7 @@
 //
 //  User-chosen guilds pinned to the top of the Tracker tab, keyed by raider.io guild id.
 //  Purely a local display preference — no server/push involvement. Per-guild push filtering
-//  was tried before (see push-service/src/worker.js's comment on raiderioEnabled) and removed
+//  was tried before (see push-service/src/worker.js's device-storage comment) and removed
 //  for reliability; this is a much simpler, UI-only "float to the top" feature.
 //
 

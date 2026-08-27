@@ -2,16 +2,18 @@
 //  NotificationPreferences.swift
 //  RWF FEED
 //
-//  Notification preferences surfaced in Settings — Raider.IO pushes (new feed posts, Major
-//  Heartbreaker, World First kills), Wowhead news pushes, spoiler-free mode (redacts World
+//  Notification preferences surfaced in Settings — three independent Raider.IO-sourced pushes
+//  (new feed posts, Major Heartbreaker close calls, World First kills — previously one combined
+//  "Raider.IO Updates" toggle, split out so a user can e.g. keep World First kills without the
+//  chattier Heartbreak close-call pushes), Wowhead news pushes, spoiler-free mode (redacts World
 //  First kill pushes to a generic "Spoiler Alert" instead of naming the guild/boss), the
 //  close-call health% threshold Major Heartbreaker pushes at, and whether that push should
 //  also fire for a guild's close call on a boss another guild has already claimed (not just
-//  genuine title-race close calls). raiderioEnabled/wowheadEnabled default on; the rest
-//  default off/to the standard threshold. Toggling any of them re-sends this device's token
-//  to the push-service Worker so it can filter/redact/threshold server-side — the client
-//  can't filter or rewrite a push after APNs has already delivered it while the app is
-//  closed.
+//  genuine title-race close calls). feedPostsEnabled/majorHeartbreakerEnabled/
+//  worldFirstKillEnabled/wowheadEnabled default on; the rest default off/to the standard
+//  threshold. Toggling any of them re-sends this device's token to the push-service Worker so
+//  it can filter/redact/threshold server-side — the client can't filter or rewrite a push after
+//  APNs has already delivered it while the app is closed.
 //
 
 import Foundation
@@ -26,16 +28,38 @@ final class NotificationPreferences: ObservableObject {
     /// changing their stored preference without any interaction they'd recognize as "changing" it.
     static let defaultHeartbreakThresholdPercent: Double = 5.0
 
-    private static let raiderioKey = "NotificationPreferences.raiderioEnabled"
+    /// Pre-split single toggle ("Raider.IO Updates") this device may still have persisted —
+    /// read once, at init, purely to seed the three split preferences below for anyone
+    /// updating from a build that only had this one. Never written to again after that.
+    private static let legacyRaiderioKey = "NotificationPreferences.raiderioEnabled"
+    private static let feedPostsKey = "NotificationPreferences.feedPostsEnabled"
+    private static let majorHeartbreakerKey = "NotificationPreferences.majorHeartbreakerEnabled"
+    private static let worldFirstKillKey = "NotificationPreferences.worldFirstKillEnabled"
     private static let wowheadKey = "NotificationPreferences.wowheadEnabled"
     private static let spoilerFreeKey = "NotificationPreferences.spoilerFreeEnabled"
     private static let heartbreakThresholdKey = "NotificationPreferences.heartbreakThresholdPercent"
     private static let notifyNonWorldFirstKey = "NotificationPreferences.notifyNonWorldFirstHeartbreaks"
 
-    @Published var raiderioEnabled: Bool {
+    @Published var feedPostsEnabled: Bool {
         didSet {
-            guard oldValue != raiderioEnabled else { return }
-            UserDefaults.standard.set(raiderioEnabled, forKey: Self.raiderioKey)
+            guard oldValue != feedPostsEnabled else { return }
+            UserDefaults.standard.set(feedPostsEnabled, forKey: Self.feedPostsKey)
+            PushRegistration.updatePreferences()
+        }
+    }
+
+    @Published var majorHeartbreakerEnabled: Bool {
+        didSet {
+            guard oldValue != majorHeartbreakerEnabled else { return }
+            UserDefaults.standard.set(majorHeartbreakerEnabled, forKey: Self.majorHeartbreakerKey)
+            PushRegistration.updatePreferences()
+        }
+    }
+
+    @Published var worldFirstKillEnabled: Bool {
+        didSet {
+            guard oldValue != worldFirstKillEnabled else { return }
+            UserDefaults.standard.set(worldFirstKillEnabled, forKey: Self.worldFirstKillKey)
             PushRegistration.updatePreferences()
         }
     }
@@ -79,7 +103,13 @@ final class NotificationPreferences: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
-        raiderioEnabled = (defaults.object(forKey: Self.raiderioKey) as? Bool) ?? true
+        // A device that never had the combined toggle (fresh install) has no legacy value to
+        // migrate, so this is nil and each split preference falls back to its own `true`
+        // default below — same as the combined toggle's own former default.
+        let legacyRaiderio = defaults.object(forKey: Self.legacyRaiderioKey) as? Bool
+        feedPostsEnabled = (defaults.object(forKey: Self.feedPostsKey) as? Bool) ?? legacyRaiderio ?? true
+        majorHeartbreakerEnabled = (defaults.object(forKey: Self.majorHeartbreakerKey) as? Bool) ?? legacyRaiderio ?? true
+        worldFirstKillEnabled = (defaults.object(forKey: Self.worldFirstKillKey) as? Bool) ?? legacyRaiderio ?? true
         wowheadEnabled = (defaults.object(forKey: Self.wowheadKey) as? Bool) ?? true
         spoilerFreeEnabled = (defaults.object(forKey: Self.spoilerFreeKey) as? Bool) ?? false
         heartbreakThresholdPercent =
