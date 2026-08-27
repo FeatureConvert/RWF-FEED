@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct HeartbreakView: View {
     @StateObject private var viewModel = HeartbreakViewModel()
@@ -22,6 +23,7 @@ struct HeartbreakView: View {
                 ScreenHeader(title: "Heartbreak", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
                     showingSettings = true
                 }
+                .popoverTip(HeartbreakScreenTip(), arrowEdge: .top)
 
                 Group {
                     if viewModel.closeCalls.isEmpty && viewModel.isLoading {

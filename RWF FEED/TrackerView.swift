@@ -167,7 +167,7 @@ struct GuildStandingRow: View {
                     Text("\(standing.rank)")
                         .font(Theme.rankNumber)
                         .foregroundStyle(Theme.textSecondary)
-                        .frame(width: 22, alignment: .leading)
+                        .frame(width: Theme.rankColumnWidth, alignment: .leading)
 
                     GuildAvatar(guild: standing.guild)
 

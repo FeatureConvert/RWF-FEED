@@ -22,6 +22,10 @@ final class DefaultTabSettings: ObservableObject {
 
     private init() {
         let raw = UserDefaults.standard.string(forKey: Self.key) ?? AppTab.feed.rawValue
-        defaultTab = AppTab(rawValue: raw) ?? .feed
+        // "kills" was a valid Default Tab before that tab folded into Bosses — remap to where
+        // its content actually went instead of silently discarding a still-recognizable prior
+        // choice down to Feed.
+        let migratedRaw = raw == "kills" ? AppTab.bosses.rawValue : raw
+        defaultTab = AppTab(rawValue: migratedRaw) ?? .feed
     }
 }

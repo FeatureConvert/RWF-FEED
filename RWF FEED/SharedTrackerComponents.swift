@@ -2,8 +2,9 @@
 //  SharedTrackerComponents.swift
 //  RWF FEED
 //
-//  Small pieces shared between TrackerView (standings) and KillFeedView (kill log) —
-//  both render guilds and need the same avatar/badge/divider treatment.
+//  Small pieces shared between TrackerView (standings) and BossBreakdownView (boss list,
+//  including its per-boss kill disclosure) — both render guilds and need the same
+//  avatar/badge/divider treatment.
 //
 
 import SwiftUI

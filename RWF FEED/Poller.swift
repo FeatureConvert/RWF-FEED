@@ -3,8 +3,8 @@
 //  RWF FEED
 //
 //  The startPolling(interval:)/stopPolling()/pollTask loop every ViewModel in this app used to
-//  hand-roll independently (FeedViewModel, TrackerViewModel, KillFeedViewModel,
-//  BossBreakdownViewModel, HeartbreakViewModel, NewsViewModel — six near-identical copies).
+//  hand-roll independently (FeedViewModel, TrackerViewModel, BossBreakdownViewModel,
+//  HeartbreakViewModel, NewsViewModel — five near-identical copies).
 //  This factors out just the loop mechanism itself, not each screen's loading/error-state
 //  semantics (those genuinely differ per screen — e.g. what counts as "first load" — so they
 //  stay owned by each ViewModel rather than being forced into a shared shape here).

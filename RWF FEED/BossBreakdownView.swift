@@ -11,6 +11,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct BossBreakdownView: View {
     @StateObject private var viewModel = BossBreakdownViewModel()
@@ -31,6 +32,7 @@ struct BossBreakdownView: View {
                 ScreenHeader(title: "Boss List", isLoading: viewModel.isLoading, lastUpdated: viewModel.lastUpdated) {
                     showingSettings = true
                 }
+                .popoverTip(KillsDisclosureTip(), arrowEdge: .top)
 
                 if viewModel.isRaceComplete {
                     Button {
@@ -130,6 +132,7 @@ struct BossBreakdownView: View {
 }
 
 struct BossSummaryRow: View {
+    @Environment(\.openURL) private var openURL
     let summary: BossSummary
     let trend: PullTrend?
     let isLast: Bool
@@ -170,7 +173,7 @@ struct BossSummaryRow: View {
             if isExpanded {
                 ForEach(Array(kills.enumerated()), id: \.element.id) { index, event in
                     KillFeedRow(event: event, isLast: index == kills.count - 1)
-                        .padding(.leading, Theme.trackerRowHPadding + 22 + Theme.trackerRowColumnGap)
+                        .padding(.leading, Theme.trackerRowHPadding + Theme.rankColumnWidth + Theme.trackerRowColumnGap)
                 }
             }
 
@@ -185,7 +188,7 @@ struct BossSummaryRow: View {
             Text("\(summary.boss.ordinal + 1)")
                 .font(Theme.rankNumber)
                 .foregroundStyle(Theme.textSecondary)
-                .frame(width: 22, alignment: .leading)
+                .frame(width: Theme.rankColumnWidth, alignment: .leading)
                 // Folded into accessibilitySummary above.
                 .accessibilityHidden(true)
 
@@ -243,6 +246,11 @@ struct BossSummaryRow: View {
                         .foregroundStyle(Theme.accentText)
                     }
                     .accessibilityLabel("Watch the kill VOD")
+                    // The row-wide .onTapGesture below (for expand/collapse) would otherwise
+                    // compete with this Link for the tap — a highPriorityGesture claims taps
+                    // landing here outright, so the VOD always opens instead of the row
+                    // toggling (or both firing at once).
+                    .highPriorityGesture(TapGesture().onEnded { openURL(vodURL) })
                 }
             }
 

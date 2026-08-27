@@ -72,6 +72,10 @@ enum Theme {
     static let trackerRowVPadding: CGFloat = 10
     static let trackerRowHPadding: CGFloat = 16
     static let trackerRowColumnGap: CGFloat = 12
+    /// Width of the leading rank/ordinal number column shared by GuildStandingRow and
+    /// BossSummaryRow — also what nested/indented rows (e.g. BossSummaryRow's disclosed
+    /// KillFeedRow) offset past to align under the row's title text instead of its number.
+    static let rankColumnWidth: CGFloat = 22
     static let tagCornerRadius: CGFloat = 6
     static let tagHPadding: CGFloat = 8
     static let tagVPadding: CGFloat = 3

@@ -71,8 +71,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         // actor, but NotificationRouter is — hop over explicitly rather than assuming.
         let userInfo = response.notification.request.content.userInfo
         Task { @MainActor in
-            if let tabRaw = userInfo["tab"] as? String, let tab = AppTab(rawValue: tabRaw) {
-                NotificationRouter.shared.pendingTab = tab
+            if let tabRaw = userInfo["tab"] as? String {
+                if let tab = AppTab(rawValue: tabRaw) {
+                    NotificationRouter.shared.pendingTab = tab
+                } else {
+                    // A stale notification from before an AppTab case was renamed/removed (or a
+                    // Worker/app deploy landing out of order) — falls through to the Default
+                    // Tab instead of crashing, but log it rather than failing silently, since
+                    // this exact class of mismatch has bitten this app before.
+                    NSLog("AppDelegate: notification tab %@ doesn't match any AppTab case", tabRaw)
+                }
             }
         }
         completionHandler()

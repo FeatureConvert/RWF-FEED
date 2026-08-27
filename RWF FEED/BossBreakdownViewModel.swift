@@ -66,9 +66,16 @@ final class BossBreakdownViewModel: ObservableObject {
                 updated.vodURL = vodURL
                 return BossSummary(boss: summary.boss, worldFirst: updated, bestPull: summary.bestPull)
             }
+            // Keep this assigned in the same pass as `summaries` above (no early return or
+            // await between them) — BossBreakdownView joins the two by boss.id at render time,
+            // with nothing enforcing they stay in sync beyond both coming from this one refresh.
+            // Re-keyed into an unordered dictionary looked up by boss.id, so killFeedGroups's
+            // most-recent-kill ordering doesn't carry over here (nor does this consumer need
+            // it) — only summary/kills content matters at this call site. uniqueKeysWithValues
+            // rather than a uniquing merge: killFeedGroups can't emit two groups for the same
+            // boss id, so a collision here would mean that invariant broke.
             killsByBossId = Dictionary(
-                tracker.killFeedGroups(rankings: rankings, maxRank: 3).map { ($0.boss.id, $0.kills) },
-                uniquingKeysWith: { first, _ in first }
+                uniqueKeysWithValues: tracker.killFeedGroups(rankings: rankings, maxRank: 3).map { ($0.boss.id, $0.kills) }
             )
             let worldStandings = tracker.standings(rankings: rankings)
             finalStandings = worldStandings
