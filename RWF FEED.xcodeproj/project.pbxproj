@@ -130,8 +130,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9DF911F3303A41EC001688F0 /* RWF FEED */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "RWF FEED";
 			sourceTree = "<group>";
 		};
@@ -194,7 +192,6 @@
 			children = (
 				AC1A38BB79DF6DEC98F3C2F0 /* RaceLiveActivityAttributes.swift */,
 			);
-			name = RWFLiveActivityShared;
 			path = RWFLiveActivityShared;
 			sourceTree = "<group>";
 		};

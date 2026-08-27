@@ -6,7 +6,7 @@
 import Foundation
 
 enum AppTab: String, CaseIterable, Identifiable {
-    case feed, tracker, kills, bosses, heartbreak, news
+    case feed, tracker, bosses, heartbreak, news
 
     var id: String { rawValue }
 
@@ -14,7 +14,6 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .feed: return "Feed"
         case .tracker: return "Tracker"
-        case .kills: return "Kills"
         case .bosses: return "Bosses"
         case .heartbreak: return "Heartbreak"
         case .news: return "News"
@@ -25,7 +24,6 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .feed: return "bolt.fill"
         case .tracker: return "list.number"
-        case .kills: return "checkmark.seal.fill"
         case .bosses: return "chart.bar.fill"
         case .heartbreak: return "heart.slash.fill"
         case .news: return "newspaper.fill"

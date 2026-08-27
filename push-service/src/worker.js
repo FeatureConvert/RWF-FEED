@@ -467,7 +467,7 @@ async function checkWorldFirstKills(env, rankings, encounterBySlug, devices) {
       const body = spoilerFree
         ? "A boss has fallen for the first time. Open the app when you're ready to see who."
         : `${claim.guildName} claims World First on ${bossName}!`;
-      await sendPush(env, device.token, title, body, `worldfirst-${slug}`, "kills");
+      await sendPush(env, device.token, title, body, `worldfirst-${slug}`, "bosses");
       pushCount++;
     }
   }

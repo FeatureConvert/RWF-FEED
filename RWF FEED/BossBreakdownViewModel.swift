@@ -9,6 +9,11 @@ import Combine
 @MainActor
 final class BossBreakdownViewModel: ObservableObject {
     @Published private(set) var summaries: [BossSummary] = []
+    /// Up to the top 3 kills (World First plus runners-up) per boss, keyed by Encounter.id —
+    /// backs each row's expand/collapse disclosure, merged in from the former standalone Kills
+    /// tab rather than re-fetched separately (killFeedGroups already derives this from the same
+    /// tracker/rankings pair this view model fetches for `summaries`).
+    @Published private(set) var killsByBossId: [Int: [KillFeedEvent]] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastUpdated: Date?
@@ -61,6 +66,10 @@ final class BossBreakdownViewModel: ObservableObject {
                 updated.vodURL = vodURL
                 return BossSummary(boss: summary.boss, worldFirst: updated, bestPull: summary.bestPull)
             }
+            killsByBossId = Dictionary(
+                tracker.killFeedGroups(rankings: rankings, maxRank: 3).map { ($0.boss.id, $0.kills) },
+                uniquingKeysWith: { first, _ in first }
+            )
             let worldStandings = tracker.standings(rankings: rankings)
             finalStandings = worldStandings
             isRaceComplete = (worldStandings.first?.bossesDown ?? 0) >= tracker.raid.encounters.count
