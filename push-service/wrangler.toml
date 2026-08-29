@@ -15,3 +15,11 @@ database_id = "41de81ab-430f-4cd0-8ef9-41235ee7a2cd"
 # invocations) 1,440 times a day for something that changes a handful of times.
 [triggers]
 crons = ["* * * * *", "*/15 * * * *"]
+
+# Default Workers CPU limit (10ms on the Free plan) started getting exceeded on the every-
+# minute cron once enough checks were bundled into one invocation (raid-race/raid-rankings
+# parsing, several D1 writes, Live Activity, Race Complete, pull-velocity snapshots, and an
+# occasional ECDSA JWT sign) — raised explicitly rather than trimming work back out, now that
+# the account is on Workers Paid.
+[limits]
+cpu_ms = 30000

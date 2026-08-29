@@ -129,8 +129,88 @@ section is; add another dated section rather than editing either in place when m
   raid-rankings endpoint (their own served rank, the full tracked field) instead of a timeline
   endpoint that only samples ~3 guilds per progress step.
 
-Live Activity and Race Complete in particular are screenshot-worthy and currently absent from
-the description draft in #6 — worth weaving in before actually submitting.
+Live Activity and Race Complete in particular are screenshot-worthy. Now reflected in the
+**1.1 metadata draft** below, alongside everything else through 2026-08-27.
+
+## Features added since 1.0 (as of 2026-08-27)
+
+Shipped after the section above. The standalone Kills tab is gone — each Bosses row now
+discloses its own top-3 kills on tap, so that content lives in Bosses instead of a separate
+screen. The app is back to 5 tabs (Feed, Tracker, Bosses, Heartbreak, News) with Apple's
+standard tab bar, replacing the earlier hand-rolled 6-tab bar. Notification preferences also
+split from one combined "Raider.IO Updates" toggle into three independent ones (New Feed
+Posts, Major Heartbreaker, World First Kills). Full detail in `docs/CHANGELOG.md`'s `[1.1]`
+section — this is just the summary relevant to the metadata draft below.
+
+## 1.1 — 2026-08-27 — metadata draft (not yet submitted)
+
+Marketing version is still `1.0` (build 1) in the Xcode project as of this writing — bumping to
+`1.1` (build 2) is a real project-file change, not a doc change, so it's left for whenever this
+is actually ready to archive. Nothing below has been pasted into App Store Connect.
+
+**Subtitle** (27/30 chars, unchanged — still accurate):
+> Race to World First Tracker
+
+**Description** (2,101/4,000 chars — same 4,000-char field limit as What's New below):
+> Follow World of Warcraft's Race to World First in real time.
+>
+> Azeroth Watch tracks Mythic raid progress across every competing guild, built on Raider.IO's
+> live data:
+>
+> • Feed — Raider.IO's own live coverage posts, as they happen
+> • Tracker — every guild's current standings, ranked by bosses down. Pin your favorite guilds
+>   to keep them visible, and filter to one region if you only care about local guilds
+> • Bosses — who's claimed World First on each boss, plus the closest live pull on ones still
+>   unclaimed. Tap any boss to see every kill on it, ranked — and a direct link to watch the
+>   kill on Twitch
+> • Heartbreak — every close call under your chosen threshold on a boss nobody's killed yet,
+>   with a "trending toward a kill" indicator on live pulls
+> • News — general WoW patch notes and tuning changes from Wowhead, so you know why a guild's
+>   pace just changed
+>
+> Tap into any guild for their full boss-by-boss progression — kill times, pull counts, live
+> pull progress — plus a link to their stream when they're live.
+>
+> Push notifications keep you posted even when the app's closed. New Feed Posts, Major
+> Heartbreaker close-call alerts, and World First kill announcements are each independently
+> toggleable, alongside a separate toggle for WoW news. Want to follow the race without
+> spoilers? Turn on Spoiler-Free Mode and kill announcements are redacted until you're ready to
+> look.
+>
+> A Live Activity puts the race leader's current boss and best live pull right on your Lock
+> Screen and in the Dynamic Island, updating in real time even while the app is closed — and
+> when the race finally ends, a dedicated Race Complete push and recap screen show you the
+> final standings.
+>
+> A watchOS companion app and complications put the current boss and closest pull right on
+> your wrist, and a home screen widget keeps it visible without opening the app. Full VoiceOver
+> support throughout.
+>
+> Azeroth Watch is a fan-made, unofficial companion app. It is not affiliated with, endorsed
+> by, or sponsored by Blizzard Entertainment, Raider.IO, or Wowhead. All race data is provided
+> by Raider.IO; all WoW news is provided by Wowhead.
+
+**Keywords** (94/100 chars — added "wowhead" and "live activity", dropped "esports" and "boss kill" for room):
+> wow,warcraft,race to world first,rwf,mythic raid,guild,raider.io,wowhead,live activity,tracker
+
+**What's New in This Version** (833/4,000 chars — same field limit as Description, confirmed via
+Apple's App Store Connect docs; punchier and shorter than the Description above by choice, not
+because of a tighter limit — this is what existing 1.0 users see on the update prompt):
+> • Boss kills now live right in the Bosses tab — tap any boss to see its top kills, no more
+>   jumping to a separate tab
+> • Notification settings got more granular: toggle New Feed Posts, Major Heartbreaker, and
+>   World First Kills independently
+> • Pin your favorite guilds to the top of Tracker, and filter Tracker/Bosses/Heartbreak to one
+>   region
+> • Live Activity: the race leader's current boss and best pull, right on your Lock Screen
+> • Race Complete: a dedicated push and recap screen once the world's leading guild clears
+>   every boss
+> • "Trending toward a kill" indicators on live pulls in Bosses and Heartbreak
+> • Tap any guild for their full kill-by-kill progression and live stream link
+> • Full VoiceOver accessibility pass, iPad support, sharper widgets, and a batch of accuracy
+>   and reliability fixes — see the full changelog for details
+
+**Category / Support URL / Marketing URL / Age rating**: unchanged from the 1.0 draft above.
 
 ## Still needed before submitting
 
